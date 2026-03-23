@@ -8,6 +8,7 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netdb.h>
+#include <arpa/inet.h>
 
 void die(const char *msg) {
   perror(msg);
@@ -91,7 +92,7 @@ ssize_t read_n(int fd, void *buf, size_t n) {
   while (total < n) {
     ssize_t r = read(fd, p + total, n - total);
 
-    if (r == 0) return total;
+    if (r == 0) return (ssize_t) total;
 
     if (r < 0) {
       if (errno == EINTR) continue;
@@ -120,4 +121,91 @@ ssize_t write_n(int fd, const void *buf, size_t n) {
   }
 
   return (ssize_t) total;
+}
+
+int send_message(int fd, uint32_t type, uint32_t request_id,
+                 const void *payload, uint32_t length) {
+  uint32_t net_type = htonl(type);
+  uint32_t net_request_id = htonl(request_id);
+  uint32_t net_length = htonl(length);
+
+  if (write_n(fd, &net_type, sizeof(net_type)) != (ssize_t) sizeof(net_type)) {
+    return -1;
+  }
+
+  if (write_n(fd, &net_request_id, sizeof(net_request_id)) !=
+      (ssize_t) sizeof(net_request_id)) {
+    return -1;
+  }
+
+  if (write_n(fd, &net_length, sizeof(net_length)) != (ssize_t) sizeof(net_length)) {
+    return -1;
+  }
+
+  if (length > 0) {
+    if (payload == NULL) {
+      errno = EINVAL;
+      return -1;
+    }
+
+    if (write_n(fd, payload, length) != (ssize_t) length) {
+      return -1;
+    }
+  }
+
+  return 0;
+}
+
+int recv_message(int fd, struct message *msg) {
+  uint32_t net_type;
+  uint32_t net_request_id;
+  uint32_t net_length;
+
+  memset(msg, 0, sizeof(*msg));
+
+  if (read_n(fd, &net_type, sizeof(net_type)) != (ssize_t) sizeof(net_type)) {
+    return -1;
+  }
+
+  if (read_n(fd, &net_request_id, sizeof(net_request_id)) !=
+      (ssize_t) sizeof(net_request_id)) {
+    return -1;
+  }
+
+  if (read_n(fd, &net_length, sizeof(net_length)) != (ssize_t) sizeof(net_length)) {
+    return -1;
+  }
+
+  msg->type = ntohl(net_type);
+  msg->request_id = ntohl(net_request_id);
+  msg->length = ntohl(net_length);
+  msg->payload = NULL;
+
+  if (msg->length > MAX_PAYLOAD_SIZE) {
+    errno = EMSGSIZE;
+    return -1;
+  }
+
+  if (msg->length > 0) {
+    msg->payload = malloc(msg->length);
+    if (msg->payload == NULL) {
+      return -1;
+    }
+
+    if (read_n(fd, msg->payload, msg->length) != (ssize_t) msg->length) {
+      free(msg->payload);
+      msg->payload = NULL;
+      return -1;
+    }
+  }
+
+  return 0;
+}
+
+void free_message(struct message *msg) {
+  free(msg->payload);
+  msg->payload = NULL;
+  msg->type = 0;
+  msg->request_id = 0;
+  msg->length = 0;
 }

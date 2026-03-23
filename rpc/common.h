@@ -9,6 +9,19 @@
 
 #define BACKLOG 16
 #define BUF_SIZE 1024
+#define MAX_PAYLOAD_SIZE 4096
+
+enum msg_type {
+  MSG_PING = 1,
+  MSG_PONG = 2
+};
+
+struct message {
+  uint32_t type;
+  uint32_t request_id;
+  uint32_t length;
+  uint8_t *payload;
+};
 
 void die(const char *msg);
 
@@ -17,5 +30,9 @@ int connect_to_server(const char *host, const char *port);
 
 ssize_t read_n(int fd, void *buf, size_t n);
 ssize_t write_n(int fd, const void *buf, size_t n);
+
+int send_message(int fd, uint32_t type, uint32_t request_id, const void *payload, uint32_t length);
+int recv_message(int fd, struct message *msg);
+void free_message(struct message *msg);
 
 #endif
