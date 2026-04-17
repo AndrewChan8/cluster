@@ -268,6 +268,115 @@ int kv_parse_get_payload(const uint8_t *payload, uint32_t length, char **key_out
   return 0;
 }
 
+int kv_build_put_payload(const char *key, const char *value, uint8_t **payload_out, uint32_t *length_out) {
+  uint32_t key_length;
+  uint32_t value_length;
+  uint32_t net_key_length;
+  uint32_t net_value_length;
+  uint8_t *payload;
+  uint32_t total_length;
+
+  if (key == NULL || value == NULL || payload_out == NULL || length_out == NULL) {
+    errno = EINVAL;
+    return -1;
+  }
+
+  key_length = (uint32_t) strlen(key);
+  value_length = (uint32_t) strlen(value);
+
+  if (key_length > MAX_PAYLOAD_SIZE - sizeof(uint32_t) * 2) {
+    errno = EMSGSIZE;
+    return -1;
+  }
+
+  if (value_length > MAX_PAYLOAD_SIZE - sizeof(uint32_t) * 2 - key_length) {
+    errno = EMSGSIZE;
+    return -1;
+  }
+
+  total_length = sizeof(uint32_t) + key_length + sizeof(uint32_t) + value_length;
+
+  payload = malloc(total_length);
+  if (payload == NULL) {
+    return -1;
+  }
+
+  net_key_length = htonl(key_length);
+  net_value_length = htonl(value_length);
+
+  memcpy(payload, &net_key_length, sizeof(net_key_length));
+  memcpy(payload + sizeof(net_key_length), key, key_length);
+  memcpy(payload + sizeof(net_key_length) + key_length,
+         &net_value_length, sizeof(net_value_length));
+  memcpy(payload + sizeof(net_key_length) + key_length + sizeof(net_value_length),
+         value, value_length);
+
+  *payload_out = payload;
+  *length_out = total_length;
+  return 0;
+}
+
+int kv_parse_put_payload(const uint8_t *payload, uint32_t length, char **key_out, char **value_out) {
+  uint32_t net_key_length;
+  uint32_t net_value_length;
+  uint32_t key_length;
+  uint32_t value_length;
+  uint32_t offset;
+  char *key;
+  char *value;
+
+  if (payload == NULL || key_out == NULL || value_out == NULL) {
+    errno = EINVAL;
+    return -1;
+  }
+
+  if (length < sizeof(uint32_t)) {
+    errno = EINVAL;
+    return -1;
+  }
+
+  memcpy(&net_key_length, payload, sizeof(net_key_length));
+  key_length = ntohl(net_key_length);
+  offset = sizeof(uint32_t);
+
+  if (length < offset + key_length + sizeof(uint32_t)) {
+    errno = EINVAL;
+    return -1;
+  }
+
+  key = malloc(key_length + 1);
+  if (key == NULL) {
+    return -1;
+  }
+
+  memcpy(key, payload + offset, key_length);
+  key[key_length] = '\0';
+  offset += key_length;
+
+  memcpy(&net_value_length, payload + offset, sizeof(net_value_length));
+  value_length = ntohl(net_value_length);
+  offset += sizeof(uint32_t);
+
+  if (length != sizeof(uint32_t) + key_length + sizeof(uint32_t) + value_length) {
+    free(key);
+    errno = EINVAL;
+    return -1;
+  }
+
+  value = malloc(value_length + 1);
+  if (value == NULL) {
+    free(key);
+    return -1;
+  }
+
+  memcpy(value, payload + offset, value_length);
+  value[value_length] = '\0';
+
+  *key_out = key;
+  *value_out = value;
+  return 0;
+}
+
 void free_message(struct message *msg) {
   free(msg->payload);
   msg->payload = NULL;
