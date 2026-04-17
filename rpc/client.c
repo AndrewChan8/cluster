@@ -119,6 +119,12 @@ int main(int argc, char *argv[]) {
 
   sockfd = connect_to_server(host, port);
 
+  if (sockfd < 0) {
+    perror("connect_to_server");
+    free(payload);
+    return EXIT_FAILURE;
+  }
+
   if (send_message(sockfd, msg_type, request_id, payload, payload_length) < 0) {
     free(payload);
     close(sockfd);
