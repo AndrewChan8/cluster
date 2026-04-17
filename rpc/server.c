@@ -42,6 +42,15 @@ int main(int argc, char *argv[]) {
       if (send_message(client_fd, MSG_ECHO, msg.request_id, msg.payload, msg.length) < 0) {
         perror("send_message");
       }
+    } else if (msg.type == MSG_GET) {
+      char *key;
+
+      if (kv_parse_get_payload(msg.payload, msg.length, &key) < 0) {
+        perror("kv_parse_get_payload");
+      } else {
+        printf("Parsed GET key: %s\n", key);
+        free(key);
+      }
     } else {
       fprintf(stderr, "Unknown message type: %u\n", msg.type);
     }
