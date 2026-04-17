@@ -123,8 +123,7 @@ ssize_t write_n(int fd, const void *buf, size_t n) {
   return (ssize_t) total;
 }
 
-int send_message(int fd, uint32_t type, uint32_t request_id,
-                 const void *payload, uint32_t length) {
+int send_message(int fd, uint32_t type, uint32_t request_id, const void *payload, uint32_t length) {
   uint32_t net_type = htonl(type);
   uint32_t net_request_id = htonl(request_id);
   uint32_t net_length = htonl(length);

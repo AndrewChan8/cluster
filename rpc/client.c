@@ -2,6 +2,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <unistd.h>
 
 int main(int argc, char *argv[]) {
@@ -12,7 +13,11 @@ int main(int argc, char *argv[]) {
 
   int sockfd = connect_to_server(argv[1], argv[2]);
 
-  if (send_message(sockfd, MSG_PING, 1, NULL, 0) < 0) {
+  const char *payload = "hello";
+  uint32_t request_id = 2;
+  uint32_t length = (uint32_t) strlen(payload);
+
+  if (send_message(sockfd, MSG_ECHO, request_id, payload, length) < 0) {
     die("send_message");
   }
 
@@ -24,28 +29,36 @@ int main(int argc, char *argv[]) {
   printf("Received message: type=%u request_id=%u length=%u\n",
          msg.type, msg.request_id, msg.length);
 
-  if (msg.type != MSG_PONG) {
-    fprintf(stderr, "Expected MSG_PONG, got %u\n", msg.type);
+  if (msg.type != MSG_ECHO) {
+    fprintf(stderr, "Expected MSG_ECHO, got %u\n", msg.type);
     free_message(&msg);
     close(sockfd);
     return EXIT_FAILURE;
   }
 
-  if (msg.request_id != 1) {
-    fprintf(stderr, "Expected request_id 1, got %u\n", msg.request_id);
+  if (msg.request_id != request_id) {
+    fprintf(stderr, "Expected request_id %u, got %u\n",
+            request_id, msg.request_id);
     free_message(&msg);
     close(sockfd);
     return EXIT_FAILURE;
   }
 
-  if (msg.length != 0) {
-    fprintf(stderr, "Expected zero-length payload, got %u\n", msg.length);
+  if (msg.length != length) {
+    fprintf(stderr, "Expected length %u, got %u\n", length, msg.length);
     free_message(&msg);
     close(sockfd);
     return EXIT_FAILURE;
   }
 
-  printf("Valid PONG received\n");
+  if (memcmp(msg.payload, payload, length) != 0) {
+    fprintf(stderr, "Payload mismatch\n");
+    free_message(&msg);
+    close(sockfd);
+    return EXIT_FAILURE;
+  }
+
+  printf("Valid ECHO received: %.*s\n", (int) msg.length, msg.payload);
 
   free_message(&msg);
   close(sockfd);

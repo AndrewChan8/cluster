@@ -32,11 +32,14 @@ int main(int argc, char *argv[]) {
       continue;
     }
 
-    printf("Received message: type=%u request_id=%u length=%u\n",
-           msg.type, msg.request_id, msg.length);
+    printf("Received message: type=%u request_id=%u length=%u\n", msg.type, msg.request_id, msg.length);
 
     if (msg.type == MSG_PING) {
       if (send_message(client_fd, MSG_PONG, msg.request_id, NULL, 0) < 0) {
+        perror("send_message");
+      }
+    } else if (msg.type == MSG_ECHO) {
+      if (send_message(client_fd, MSG_ECHO, msg.request_id, msg.payload, msg.length) < 0) {
         perror("send_message");
       }
     } else {

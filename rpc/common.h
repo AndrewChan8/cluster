@@ -13,7 +13,8 @@
 
 enum msg_type {
   MSG_PING = 1,
-  MSG_PONG = 2
+  MSG_PONG = 2,
+  MSG_ECHO = 3
 };
 
 struct message {
