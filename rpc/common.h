@@ -20,7 +20,9 @@ enum msg_type {
   MSG_DELETE = 6,
   MSG_OK = 7,
   MSG_GET_RESPONSE = 8,
-  MSG_ERROR = 9
+  MSG_ERROR = 9,
+  MSG_REPL_PUT = 10,
+  MSG_REPL_DELETE = 11
 };
 
 struct message {

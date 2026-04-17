@@ -81,7 +81,10 @@ int connect_to_server(const char *host, const char *port) {
 
   freeaddrinfo(res);
 
-  if (sockfd == -1) die("connect/socket");
+  if (sockfd == -1) {
+    return -1;
+  }
+
   return sockfd;
 }
 
