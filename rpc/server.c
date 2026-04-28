@@ -78,6 +78,16 @@ int main(int argc, char *argv[]) {
       handle_repl_delete(client_fd, &msg);
     } else if (msg.type == MSG_DELETE) {
       handle_delete(client_fd, &msg, role, argv[1]);
+    } else if (msg.type == MSG_PREPARE_PUT) {
+      handle_prepare_put(client_fd, &msg);
+    } else if (msg.type == MSG_COMMIT_PUT) {
+      handle_commit_put(client_fd, &msg);
+    } else if (msg.type == MSG_ABORT) {
+      handle_abort(client_fd, &msg);
+    } else if (msg.type == MSG_PREPARE_DELETE) {
+      handle_prepare_delete(client_fd, &msg);
+    } else if (msg.type == MSG_COMMIT_DELETE) {
+      handle_commit_delete(client_fd, &msg);
     } else {
       fprintf(stderr, "Unknown message type: %u\n", msg.type);
     }

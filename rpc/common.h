@@ -22,7 +22,12 @@ enum msg_type {
   MSG_GET_RESPONSE = 8,
   MSG_ERROR = 9,
   MSG_REPL_PUT = 10,
-  MSG_REPL_DELETE = 11
+  MSG_REPL_DELETE = 11,
+  MSG_PREPARE_PUT = 12,
+  MSG_COMMIT_PUT = 13,
+  MSG_ABORT = 14,
+  MSG_PREPARE_DELETE = 15,
+  MSG_COMMIT_DELETE = 16
 };
 
 struct message {
