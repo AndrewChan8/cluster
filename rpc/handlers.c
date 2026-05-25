@@ -5,6 +5,15 @@
 #include <stdio.h>
 #include <string.h>
 
+#define CURRENT_TERM 1
+
+static const char *FOLLOWERS[] = {
+  "node2",
+  "node3"
+};
+
+static const int FOLLOWER_COUNT = 2;
+
 int handle_append(int client_fd,
                   const struct message *msg,
                   server_role_t role,
@@ -40,39 +49,29 @@ int handle_append(int client_fd,
 
   printf("APPEND tx=\"%s\"\n", tx);
 
-  if (replicate_append_to_follower("node2",
-                                   port,
-                                   msg->request_id,
-                                   msg->payload,
-                                   msg->length) < 0) {
-    const char *err = "replication to node2 failed";
+  for (int i = 0; i < FOLLOWER_COUNT; i++) {
+    if (replicate_append_to_follower(FOLLOWERS[i],
+                                     port,
+                                     msg->request_id,
+                                     msg->payload,
+                                     msg->length) < 0) {
+      char err[128];
 
-    send_message(client_fd,
-                 MSG_ERROR,
-                 msg->request_id,
-                 err,
-                 (uint32_t) strlen(err));
+      snprintf(err, sizeof(err),
+               "replication to %s failed",
+               FOLLOWERS[i]);
 
-    return 0;
+      send_message(client_fd,
+                   MSG_ERROR,
+                   msg->request_id,
+                   err,
+                   (uint32_t) strlen(err));
+
+      return 0;
+    }
   }
 
-  if (replicate_append_to_follower("node3",
-                                   port,
-                                   msg->request_id,
-                                   msg->payload,
-                                   msg->length) < 0) {
-    const char *err = "replication to node3 failed";
-
-    send_message(client_fd,
-                 MSG_ERROR,
-                 msg->request_id,
-                 err,
-                 (uint32_t) strlen(err));
-
-    return 0;
-  }
-
-  if (ledger_append_local(tx, 1, 1) < 0) {
+  if (ledger_append_local(tx, CURRENT_TERM, 1) < 0) {
     const char *err = "ledger full";
 
     send_message(client_fd,
@@ -118,7 +117,7 @@ int handle_repl_append(int client_fd,
 
   printf("REPL_APPEND tx=\"%s\"\n", tx);
 
-  if (ledger_append_local(tx, 1, 1) < 0) {
+  if (ledger_append_local(tx, CURRENT_TERM, 1) < 0) {
     const char *err = "ledger full";
 
     send_message(client_fd,

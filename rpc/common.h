@@ -8,7 +8,6 @@
 #include <sys/types.h>
 
 #define BACKLOG 16
-#define BUF_SIZE 1024
 #define MAX_PAYLOAD_SIZE 4096
 
 enum msg_type {
@@ -45,13 +44,8 @@ int connect_to_server(const char *host, const char *port);
 ssize_t read_n(int fd, void *buf, size_t n);
 ssize_t write_n(int fd, const void *buf, size_t n);
 
-int kv_build_get_payload(const char *key, uint8_t **payload_out, uint32_t *length_out);
-int kv_parse_get_payload(const uint8_t *payload, uint32_t length, char **key_out);
-
-int kv_build_put_payload(const char *key, const char *value, uint8_t **payload_out, uint32_t *length_out);
-int kv_parse_put_payload(const uint8_t *payload, uint32_t length, char **key_out, char **value_out);
-
-int send_message(int fd, uint32_t type, uint32_t request_id, const void *payload, uint32_t length);
+int send_message(int fd, uint32_t type, uint32_t request_id,
+                 const void *payload, uint32_t length);
 int recv_message(int fd, struct message *msg);
 void free_message(struct message *msg);
 
