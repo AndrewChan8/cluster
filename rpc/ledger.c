@@ -90,3 +90,41 @@ void ledger_print(void) {
     printf("     hash=%s\n", ledger[i].hash);
   }
 }
+
+int ledger_serialize(char *buf, uint32_t buf_size) {
+  uint32_t i;
+  int written;
+  uint32_t used = 0;
+
+  if (buf == NULL || buf_size == 0) {
+    return -1;
+  }
+
+  written = snprintf(buf + used, buf_size - used,
+                     "Ledger size: %u\n", ledger_count);
+  if (written < 0 || (uint32_t) written >= buf_size - used) {
+    return -1;
+  }
+  used += (uint32_t) written;
+
+  for (i = 0; i < ledger_count; i++) {
+    written = snprintf(buf + used, buf_size - used,
+                       "[%u] term=%u committed=%u tx=\"%s\"\n"
+                       "     prev_hash=%s\n"
+                       "     hash=%s\n",
+                       ledger[i].index,
+                       ledger[i].term,
+                       ledger[i].committed,
+                       ledger[i].tx,
+                       ledger[i].prev_hash,
+                       ledger[i].hash);
+
+    if (written < 0 || (uint32_t) written >= buf_size - used) {
+      return -1;
+    }
+
+    used += (uint32_t) written;
+  }
+
+  return (int) used;
+}

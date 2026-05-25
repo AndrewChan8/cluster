@@ -5,9 +5,9 @@
 #include <string.h>
 #include <unistd.h>
 
-static int handle_ok_error_response(struct message *msg,
-                                    uint32_t request_id,
-                                    const char *op_name) {
+static int handle_response(struct message *msg,
+                           uint32_t request_id,
+                           const char *op_name) {
   if (msg->request_id != request_id) {
     fprintf(stderr, "%s: expected request_id %u, got %u\n",
             op_name, request_id, msg->request_id);
@@ -16,6 +16,11 @@ static int handle_ok_error_response(struct message *msg,
 
   if (msg->type == MSG_OK) {
     printf("%s succeeded\n", op_name);
+    return 0;
+  }
+
+  if (msg->type == MSG_LOG_RESPONSE) {
+    printf("%.*s", (int) msg->length, msg->payload);
     return 0;
   }
 
@@ -32,27 +37,51 @@ int main(int argc, char *argv[]) {
   const char *host;
   const char *port;
   const char *op;
-  const char *tx;
+  const char *tx = NULL;
 
   int sockfd;
   uint32_t request_id = 1;
+  uint32_t msg_type;
+  const void *payload = NULL;
+  uint32_t payload_length = 0;
   struct message msg;
   int rc = EXIT_FAILURE;
 
-  if (argc != 5) {
+  if (argc != 4 && argc != 5) {
     fprintf(stderr,
             "Usage:\n"
-            "  %s <host> <port> append <transaction>\n",
-            argv[0]);
+            "  %s <host> <port> append <transaction>\n"
+            "  %s <host> <port> log\n",
+            argv[0], argv[0]);
     return EXIT_FAILURE;
   }
 
   host = argv[1];
   port = argv[2];
   op = argv[3];
-  tx = argv[4];
 
-  if (strcmp(op, "append") != 0) {
+  if (strcmp(op, "append") == 0) {
+    if (argc != 5) {
+      fprintf(stderr, "Usage: %s <host> <port> append <transaction>\n", argv[0]);
+      return EXIT_FAILURE;
+    }
+
+    tx = argv[4];
+    msg_type = MSG_APPEND;
+    payload = tx;
+    payload_length = (uint32_t) strlen(tx);
+
+  } else if (strcmp(op, "log") == 0) {
+    if (argc != 4) {
+      fprintf(stderr, "Usage: %s <host> <port> log\n", argv[0]);
+      return EXIT_FAILURE;
+    }
+
+    msg_type = MSG_GET_LOG;
+    payload = NULL;
+    payload_length = 0;
+
+  } else {
     fprintf(stderr, "Unknown operation: %s\n", op);
     return EXIT_FAILURE;
   }
@@ -64,10 +93,10 @@ int main(int argc, char *argv[]) {
   }
 
   if (send_message(sockfd,
-                   MSG_APPEND,
+                   msg_type,
                    request_id,
-                   tx,
-                   (uint32_t) strlen(tx)) < 0) {
+                   payload,
+                   payload_length) < 0) {
     close(sockfd);
     die("send_message");
   }
@@ -80,7 +109,7 @@ int main(int argc, char *argv[]) {
   printf("Response: type=%u request_id=%u length=%u\n",
          msg.type, msg.request_id, msg.length);
 
-  if (handle_ok_error_response(&msg, request_id, "APPEND") == 0) {
+  if (handle_response(&msg, request_id, op) == 0) {
     rc = EXIT_SUCCESS;
   }
 

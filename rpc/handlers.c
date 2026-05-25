@@ -145,10 +145,30 @@ int handle_repl_append(int client_fd,
 
 int handle_get_log(int client_fd,
                    const struct message *msg) {
-  (void) client_fd;
-  (void) msg;
+  char buf[MAX_PAYLOAD_SIZE];
+  int n;
 
-  ledger_print();
+  n = ledger_serialize(buf, sizeof(buf));
+  if (n < 0) {
+    const char *err = "failed to serialize ledger";
+
+    send_message(client_fd,
+                 MSG_ERROR,
+                 msg->request_id,
+                 err,
+                 (uint32_t) strlen(err));
+
+    return 0;
+  }
+
+  if (send_message(client_fd,
+                   MSG_LOG_RESPONSE,
+                   msg->request_id,
+                   buf,
+                   (uint32_t) n) < 0) {
+    perror("send_message");
+  }
+
   return 0;
 }
 

@@ -21,5 +21,6 @@ int ledger_append_local(const char *tx, uint32_t term, uint32_t committed);
 const ledger_entry_t *ledger_get(uint32_t index);
 uint32_t ledger_size(void);
 void ledger_print(void);
+int ledger_serialize(char *buf, uint32_t buf_size);
 
 #endif
