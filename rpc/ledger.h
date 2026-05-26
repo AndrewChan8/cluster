@@ -29,5 +29,6 @@ int ledger_build_sync_payload(uint8_t **payload_out, uint32_t *length_out);
 int ledger_apply_sync_payload(const uint8_t *payload, uint32_t length);
 int ledger_load_from_file(const char *path);
 int ledger_save_to_file(const char *path);
+const char *ledger_last_hash(void);
 
 #endif

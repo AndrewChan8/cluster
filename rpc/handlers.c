@@ -431,3 +431,37 @@ int handle_sync_response(int client_fd,
 
   return 0;
 }
+
+int handle_status(int client_fd,
+                  const struct message *msg) {
+  char buf[128];
+  int n;
+
+  n = snprintf(buf,
+               sizeof(buf),
+               "size=%u last_hash=%s",
+               ledger_size(),
+               ledger_last_hash());
+
+  if (n < 0 || (uint32_t) n >= sizeof(buf)) {
+    const char *err = "failed to build status";
+
+    send_message(client_fd,
+                 MSG_ERROR,
+                 msg->request_id,
+                 err,
+                 (uint32_t) strlen(err));
+
+    return 0;
+  }
+
+  if (send_message(client_fd,
+                   MSG_STATUS_RESPONSE,
+                   msg->request_id,
+                   buf,
+                   (uint32_t) n) < 0) {
+    perror("send_message");
+  }
+
+  return 0;
+}

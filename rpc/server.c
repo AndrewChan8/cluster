@@ -97,6 +97,9 @@ int main(int argc, char *argv[]) {
     } else if (msg.type == MSG_SYNC_RESPONSE) {
       handle_sync_response(client_fd, &msg);
       
+    } else if (msg.type == MSG_STATUS) {
+      handle_status(client_fd, &msg);
+
     } else {
       fprintf(stderr, "Unknown message type: %u\n", msg.type);
     }

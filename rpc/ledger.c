@@ -415,3 +415,11 @@ int ledger_load_from_file(const char *path) {
 
   return 0;
 }
+
+const char *ledger_last_hash(void) {
+  if (ledger_count == 0) {
+    return "GENESIS";
+  }
+
+  return ledger[ledger_count - 1].hash;
+}

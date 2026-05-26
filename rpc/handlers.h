@@ -22,4 +22,6 @@ int handle_sync_request(int client_fd, const struct message *msg);
 
 int handle_sync_response(int client_fd, const struct message *msg);
 
+int handle_status(int client_fd, const struct message *msg);
+
 #endif

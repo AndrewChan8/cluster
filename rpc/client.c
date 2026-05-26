@@ -29,6 +29,11 @@ static int handle_response(struct message *msg,
     return 0;
   }
 
+  if (msg->type == MSG_STATUS_RESPONSE) {
+    printf("%.*s\n", (int) msg->length, msg->payload);
+    return 0;
+  }
+
   fprintf(stderr, "%s: unexpected response type %u\n", op_name, msg->type);
   return -1;
 }
@@ -53,8 +58,9 @@ int main(int argc, char *argv[]) {
         "  %s <host> <port> append <transaction>\n"
         "  %s <host> <port> log\n"
         "  %s <host> <port> mode <strong|quorum|eventual>\n"
-        "  %s <host> <port> sync <leader-host>\n",
-        argv[0], argv[0], argv[0], argv[0]);
+        "  %s <host> <port> sync <leader-host>\n"
+        "  %s <host> <port> status\n",
+        argv[0], argv[0], argv[0], argv[0], argv[0]);
     return EXIT_FAILURE;
   }
 
@@ -104,6 +110,16 @@ int main(int argc, char *argv[]) {
     msg_type = MSG_SYNC_REQUEST;
     payload = tx;
     payload_length = (uint32_t) strlen(tx);
+
+  } else if (strcmp(op, "status") == 0) {
+    if (argc != 4) {
+      fprintf(stderr, "Usage: %s <host> <port> status\n", argv[0]);
+      return EXIT_FAILURE;
+    }
+
+    msg_type = MSG_STATUS;
+    payload = NULL;
+    payload_length = 0;
 
   } else {
     fprintf(stderr, "Unknown operation: %s\n", op);
