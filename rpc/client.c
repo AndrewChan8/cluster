@@ -49,11 +49,12 @@ int main(int argc, char *argv[]) {
 
   if (argc != 4 && argc != 5) {
     fprintf(stderr,
-            "Usage:\n"
-            "  %s <host> <port> append <transaction>\n"
-            "  %s <host> <port> log\n"
-            "  %s <host> <port> mode <strong|quorum|eventual>\n",
-            argv[0], argv[0], argv[0]);
+        "Usage:\n"
+        "  %s <host> <port> append <transaction>\n"
+        "  %s <host> <port> log\n"
+        "  %s <host> <port> mode <strong|quorum|eventual>\n"
+        "  %s <host> <port> sync <leader-host>\n",
+        argv[0], argv[0], argv[0], argv[0]);
     return EXIT_FAILURE;
   }
 
@@ -90,6 +91,17 @@ int main(int argc, char *argv[]) {
 
     tx = argv[4];
     msg_type = MSG_SET_MODE;
+    payload = tx;
+    payload_length = (uint32_t) strlen(tx);
+
+  } else if (strcmp(op, "sync") == 0) {
+    if (argc != 5) {
+      fprintf(stderr, "Usage: %s <host> <port> sync <leader-host>\n", argv[0]);
+      return EXIT_FAILURE;
+    }
+
+    tx = argv[4];
+    msg_type = MSG_SYNC_REQUEST;
     payload = tx;
     payload_length = (uint32_t) strlen(tx);
 

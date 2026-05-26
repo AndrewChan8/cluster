@@ -18,4 +18,8 @@ int handle_abort(int client_fd, const struct message *msg);
 
 int handle_set_mode(int client_fd, const struct message *msg, server_role_t role);
 
+int handle_sync_request(int client_fd, const struct message *msg);
+
+int handle_sync_response(int client_fd, const struct message *msg);
+
 #endif

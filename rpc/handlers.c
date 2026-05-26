@@ -4,6 +4,7 @@
 
 #include <stdio.h>
 #include <string.h>
+#include <stdlib.h>
 
 #define CURRENT_TERM 1
 
@@ -51,7 +52,7 @@ int handle_append(int client_fd,
 
   printf("APPEND tx=\"%s\"\n", tx);
 
-    int ack_count = 0;
+  int ack_count = 0;
 
   if (current_mode == CONSISTENCY_STRONG) {
     for (int i = 0; i < FOLLOWER_COUNT; i++) {
@@ -122,6 +123,7 @@ int handle_append(int client_fd,
          current_mode,
          ack_count,
          FOLLOWER_COUNT);
+
   if (ledger_append_local(tx, CURRENT_TERM, 1) < 0) {
     const char *err = "ledger full";
 
@@ -310,6 +312,114 @@ int handle_abort(int client_fd,
                  const struct message *msg) {
   printf("ABORT request_id=%u\n",
          msg->request_id);
+
+  if (send_message(client_fd,
+                   MSG_OK,
+                   msg->request_id,
+                   NULL,
+                   0) < 0) {
+    perror("send_message");
+  }
+
+  return 0;
+}
+
+int handle_sync_request(int client_fd,
+                        const struct message *msg) {
+  uint8_t *payload;
+  uint32_t length;
+  char leader_host[256];
+
+  /*
+   * Case 1:
+   * Client asks this node to sync from a leader.
+   * Payload contains leader hostname, e.g. "node1".
+   */
+  if (msg->length > 0) {
+    if (msg->length >= sizeof(leader_host)) {
+      const char *err = "leader hostname too long";
+
+      send_message(client_fd,
+                   MSG_ERROR,
+                   msg->request_id,
+                   err,
+                   (uint32_t) strlen(err));
+
+      return 0;
+    }
+
+    memcpy(leader_host, msg->payload, msg->length);
+    leader_host[msg->length] = '\0';
+
+    if (request_sync_from_leader(leader_host, "5000", msg->request_id) < 0) {
+      const char *err = "sync from leader failed";
+
+      send_message(client_fd,
+                   MSG_ERROR,
+                   msg->request_id,
+                   err,
+                   (uint32_t) strlen(err));
+
+      return 0;
+    }
+
+    send_message(client_fd,
+                 MSG_OK,
+                 msg->request_id,
+                 NULL,
+                 0);
+
+    return 0;
+  }
+
+  /*
+   * Case 2:
+   * Another node asks this node for its ledger snapshot.
+   * This is normally handled by the leader.
+   */
+  payload = NULL;
+  length = 0;
+
+  if (ledger_build_sync_payload(&payload, &length) < 0) {
+    const char *err = "failed to build sync payload";
+
+    send_message(client_fd,
+                 MSG_ERROR,
+                 msg->request_id,
+                 err,
+                 (uint32_t) strlen(err));
+
+    return 0;
+  }
+
+  if (send_message(client_fd,
+                   MSG_SYNC_RESPONSE,
+                   msg->request_id,
+                   payload,
+                   length) < 0) {
+    perror("send_message");
+  }
+
+  free(payload);
+  return 0;
+}
+
+int handle_sync_response(int client_fd,
+                         const struct message *msg) {
+  if (ledger_apply_sync_payload(msg->payload, msg->length) < 0) {
+    const char *err = "failed to apply sync payload";
+
+    send_message(client_fd,
+                 MSG_ERROR,
+                 msg->request_id,
+                 err,
+                 (uint32_t) strlen(err));
+
+    return 0;
+  }
+
+  printf("Applied sync payload. New local ledger:\n");
+  ledger_print();
 
   if (send_message(client_fd,
                    MSG_OK,

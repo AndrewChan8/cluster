@@ -25,4 +25,8 @@ int abort_follower(const char *host,
                    const char *port,
                    uint32_t request_id);
 
+int request_sync_from_leader(const char *leader_host,
+                             const char *port,
+                             uint32_t request_id);
+
 #endif

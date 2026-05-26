@@ -26,7 +26,9 @@ enum msg_type {
   MSG_REPL_APPEND = 10,
   MSG_PREPARE_APPEND = 11,
   MSG_COMMIT_APPEND = 12,
-  MSG_ABORT = 13
+  MSG_ABORT = 13,
+  MSG_SYNC_REQUEST = 14,
+  MSG_SYNC_RESPONSE = 15
 };
 
 struct message {

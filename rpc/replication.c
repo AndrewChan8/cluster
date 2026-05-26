@@ -1,8 +1,10 @@
 #include "replication.h"
 #include "common.h"
+#include "ledger.h"
 
 #include <stdio.h>
 #include <unistd.h>
+
 
 static int send_to_follower(const char *host,
                             const char *port,
@@ -95,4 +97,62 @@ int abort_follower(const char *host,
                           request_id,
                           NULL,
                           0);
+}
+
+int request_sync_from_leader(const char *leader_host,
+                             const char *port,
+                             uint32_t request_id) {
+  int sockfd;
+  struct message msg;
+  int rc = -1;
+
+  sockfd = connect_to_server(leader_host, port);
+  if (sockfd < 0) {
+    perror("connect_to_server");
+    return -1;
+  }
+
+  if (send_message(sockfd,
+                   MSG_SYNC_REQUEST,
+                   request_id,
+                   NULL,
+                   0) < 0) {
+    perror("send_message");
+    close(sockfd);
+    return -1;
+  }
+
+  if (recv_message(sockfd, &msg) < 0) {
+    perror("recv_message");
+    close(sockfd);
+    return -1;
+  }
+
+  if (msg.type != MSG_SYNC_RESPONSE) {
+    fprintf(stderr,
+            "expected MSG_SYNC_RESPONSE, got %u\n",
+            msg.type);
+
+    free_message(&msg);
+    close(sockfd);
+    return -1;
+  }
+
+  if (ledger_apply_sync_payload(msg.payload,
+                                msg.length) < 0) {
+    fprintf(stderr, "failed to apply sync payload\n");
+
+    free_message(&msg);
+    close(sockfd);
+    return -1;
+  }
+
+  printf("Recovered ledger from leader:\n");
+  ledger_print();
+
+  rc = 0;
+
+  free_message(&msg);
+  close(sockfd);
+  return rc;
 }
