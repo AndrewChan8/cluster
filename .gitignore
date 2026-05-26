@@ -1,3 +1,4 @@
 rpc/*.o
 rpc/server
 rpc/client
+*.data
