@@ -79,6 +79,9 @@ int main(int argc, char *argv[]) {
     } else if (msg.type == MSG_GET_LOG) {
       handle_get_log(client_fd, &msg);
 
+    } else if (msg.type == MSG_SET_MODE) {
+      handle_set_mode(client_fd, &msg, role);
+      
     } else if (msg.type == MSG_PREPARE_APPEND) {
       handle_prepare_append(client_fd, &msg);
 

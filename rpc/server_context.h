@@ -6,4 +6,10 @@ typedef enum {
   ROLE_FOLLOWER
 } server_role_t;
 
+typedef enum {
+  CONSISTENCY_STRONG,
+  CONSISTENCY_QUORUM,
+  CONSISTENCY_EVENTUAL
+} consistency_mode_t;
+
 #endif

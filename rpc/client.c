@@ -51,8 +51,9 @@ int main(int argc, char *argv[]) {
     fprintf(stderr,
             "Usage:\n"
             "  %s <host> <port> append <transaction>\n"
-            "  %s <host> <port> log\n",
-            argv[0], argv[0]);
+            "  %s <host> <port> log\n"
+            "  %s <host> <port> mode <strong|quorum|eventual>\n",
+            argv[0], argv[0], argv[0]);
     return EXIT_FAILURE;
   }
 
@@ -80,6 +81,17 @@ int main(int argc, char *argv[]) {
     msg_type = MSG_GET_LOG;
     payload = NULL;
     payload_length = 0;
+
+  } else if (strcmp(op, "mode") == 0) {
+    if (argc != 5) {
+      fprintf(stderr, "Usage: %s <host> <port> mode <strong|quorum|eventual>\n", argv[0]);
+      return EXIT_FAILURE;
+    }
+
+    tx = argv[4];
+    msg_type = MSG_SET_MODE;
+    payload = tx;
+    payload_length = (uint32_t) strlen(tx);
 
   } else {
     fprintf(stderr, "Unknown operation: %s\n", op);
