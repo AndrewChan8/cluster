@@ -5,10 +5,13 @@
 #include <stdio.h>
 #include <string.h>
 
+#define LEDGER_FILE "ledger.data"
+
 static ledger_entry_t ledger[MAX_LEDGER_ENTRIES];
 static uint32_t ledger_count = 0;
 
-static void compute_fake_hash(const ledger_entry_t *entry, char out[HASH_SIZE + 1]) {
+static void compute_fake_hash(const ledger_entry_t *entry,
+                              char out[HASH_SIZE + 1]) {
   unsigned long h = 5381;
   const unsigned char *p;
 
@@ -27,11 +30,10 @@ static void compute_fake_hash(const ledger_entry_t *entry, char out[HASH_SIZE + 
   snprintf(out, HASH_SIZE + 1, "%064lx", h);
 }
 
-void ledger_init(void) {
-  ledger_count = 0;
-}
-
-int ledger_append_local(const char *tx, uint32_t term, uint32_t committed) {
+static int ledger_append_entry(const char *tx,
+                               uint32_t term,
+                               uint32_t committed,
+                               int persist) {
   ledger_entry_t *entry;
 
   if (tx == NULL) {
@@ -54,14 +56,42 @@ int ledger_append_local(const char *tx, uint32_t term, uint32_t committed) {
   if (ledger_count == 0) {
     strncpy(entry->prev_hash, "GENESIS", HASH_SIZE);
   } else {
-    strncpy(entry->prev_hash, ledger[ledger_count - 1].hash, HASH_SIZE);
+    strncpy(entry->prev_hash,
+            ledger[ledger_count - 1].hash,
+            HASH_SIZE);
   }
+
   entry->prev_hash[HASH_SIZE] = '\0';
 
   compute_fake_hash(entry, entry->hash);
 
   ledger_count++;
+
+  if (persist && ledger_save_to_file(LEDGER_FILE) < 0) {
+    return -1;
+  }
+
   return 0;
+}
+
+void ledger_init(void) {
+  ledger_count = 0;
+
+  if (ledger_load_from_file(LEDGER_FILE) == 0) {
+    printf("Loaded ledger from %s\n", LEDGER_FILE);
+  }
+}
+
+int ledger_append_local(const char *tx,
+                        uint32_t term,
+                        uint32_t committed) {
+  return ledger_append_entry(tx, term, committed, 1);
+}
+
+int ledger_append_recovered(const char *tx,
+                            uint32_t term,
+                            uint32_t committed) {
+  return ledger_append_entry(tx, term, committed, 0);
 }
 
 const ledger_entry_t *ledger_get(uint32_t index) {
@@ -102,15 +132,21 @@ int ledger_serialize(char *buf, uint32_t buf_size) {
     return -1;
   }
 
-  written = snprintf(buf + used, buf_size - used,
-                     "Ledger size: %u\n", ledger_count);
-  if (written < 0 || (uint32_t) written >= buf_size - used) {
+  written = snprintf(buf + used,
+                     buf_size - used,
+                     "Ledger size: %u\n",
+                     ledger_count);
+
+  if (written < 0 ||
+      (uint32_t) written >= buf_size - used) {
     return -1;
   }
+
   used += (uint32_t) written;
 
   for (i = 0; i < ledger_count; i++) {
-    written = snprintf(buf + used, buf_size - used,
+    written = snprintf(buf + used,
+                       buf_size - used,
                        "[%u] term=%u committed=%u tx=\"%s\"\n"
                        "     prev_hash=%s\n"
                        "     hash=%s\n",
@@ -121,7 +157,8 @@ int ledger_serialize(char *buf, uint32_t buf_size) {
                        ledger[i].prev_hash,
                        ledger[i].hash);
 
-    if (written < 0 || (uint32_t) written >= buf_size - used) {
+    if (written < 0 ||
+        (uint32_t) written >= buf_size - used) {
       return -1;
     }
 
@@ -133,12 +170,6 @@ int ledger_serialize(char *buf, uint32_t buf_size) {
 
 void ledger_clear(void) {
   ledger_count = 0;
-}
-
-int ledger_append_recovered(const char *tx,
-                            uint32_t term,
-                            uint32_t committed) {
-  return ledger_append_local(tx, term, committed);
 }
 
 int ledger_build_sync_payload(uint8_t **payload_out,
@@ -168,30 +199,54 @@ int ledger_build_sync_payload(uint8_t **payload_out,
   offset = 0;
 
   net_count = htonl(ledger_count);
-  memcpy(payload + offset, &net_count, sizeof(net_count));
+
+  memcpy(payload + offset,
+         &net_count,
+         sizeof(net_count));
+
   offset += sizeof(net_count);
 
   for (i = 0; i < ledger_count; i++) {
-    uint32_t tx_length = (uint32_t) strlen(ledger[i].tx);
-    uint32_t net_term = htonl(ledger[i].term);
-    uint32_t net_committed = htonl(ledger[i].committed);
-    uint32_t net_tx_length = htonl(tx_length);
+    uint32_t tx_length =
+      (uint32_t) strlen(ledger[i].tx);
 
-    memcpy(payload + offset, &net_term, sizeof(net_term));
+    uint32_t net_term =
+      htonl(ledger[i].term);
+
+    uint32_t net_committed =
+      htonl(ledger[i].committed);
+
+    uint32_t net_tx_length =
+      htonl(tx_length);
+
+    memcpy(payload + offset,
+           &net_term,
+           sizeof(net_term));
+
     offset += sizeof(net_term);
 
-    memcpy(payload + offset, &net_committed, sizeof(net_committed));
+    memcpy(payload + offset,
+           &net_committed,
+           sizeof(net_committed));
+
     offset += sizeof(net_committed);
 
-    memcpy(payload + offset, &net_tx_length, sizeof(net_tx_length));
+    memcpy(payload + offset,
+           &net_tx_length,
+           sizeof(net_tx_length));
+
     offset += sizeof(net_tx_length);
 
-    memcpy(payload + offset, ledger[i].tx, tx_length);
+    memcpy(payload + offset,
+           ledger[i].tx,
+           tx_length);
+
     offset += tx_length;
   }
 
   *payload_out = payload;
   *length_out = total_length;
+
   return 0;
 }
 
@@ -202,14 +257,19 @@ int ledger_apply_sync_payload(const uint8_t *payload,
   uint32_t count;
   uint32_t i;
 
-  if (payload == NULL || length < sizeof(uint32_t)) {
+  if (payload == NULL ||
+      length < sizeof(uint32_t)) {
     return -1;
   }
 
   offset = 0;
 
-  memcpy(&net_count, payload + offset, sizeof(net_count));
+  memcpy(&net_count,
+         payload + offset,
+         sizeof(net_count));
+
   count = ntohl(net_count);
+
   offset += sizeof(net_count);
 
   if (count > MAX_LEDGER_ENTRIES) {
@@ -222,39 +282,58 @@ int ledger_apply_sync_payload(const uint8_t *payload,
     uint32_t net_term;
     uint32_t net_committed;
     uint32_t net_tx_length;
+
     uint32_t term;
     uint32_t committed;
     uint32_t tx_length;
+
     char tx[MAX_TX_SIZE + 1];
 
-    if (length - offset < sizeof(uint32_t) * 3) {
+    if (length - offset <
+        sizeof(uint32_t) * 3) {
       ledger_clear();
       return -1;
     }
 
-    memcpy(&net_term, payload + offset, sizeof(net_term));
+    memcpy(&net_term,
+           payload + offset,
+           sizeof(net_term));
+
     offset += sizeof(net_term);
 
-    memcpy(&net_committed, payload + offset, sizeof(net_committed));
+    memcpy(&net_committed,
+           payload + offset,
+           sizeof(net_committed));
+
     offset += sizeof(net_committed);
 
-    memcpy(&net_tx_length, payload + offset, sizeof(net_tx_length));
+    memcpy(&net_tx_length,
+           payload + offset,
+           sizeof(net_tx_length));
+
     offset += sizeof(net_tx_length);
 
     term = ntohl(net_term);
     committed = ntohl(net_committed);
     tx_length = ntohl(net_tx_length);
 
-    if (tx_length >= MAX_TX_SIZE || length - offset < tx_length) {
+    if (tx_length >= MAX_TX_SIZE ||
+        length - offset < tx_length) {
       ledger_clear();
       return -1;
     }
 
-    memcpy(tx, payload + offset, tx_length);
+    memcpy(tx,
+           payload + offset,
+           tx_length);
+
     tx[tx_length] = '\0';
+
     offset += tx_length;
 
-    if (ledger_append_recovered(tx, term, committed) < 0) {
+    if (ledger_append_recovered(tx,
+                                term,
+                                committed) < 0) {
       ledger_clear();
       return -1;
     }
@@ -264,6 +343,75 @@ int ledger_apply_sync_payload(const uint8_t *payload,
     ledger_clear();
     return -1;
   }
+
+  if (ledger_save_to_file(LEDGER_FILE) < 0) {
+    return -1;
+  }
+
+  return 0;
+}
+
+int ledger_save_to_file(const char *path) {
+  FILE *fp;
+  uint32_t i;
+
+  fp = fopen(path, "w");
+  if (fp == NULL) {
+    return -1;
+  }
+
+  for (i = 0; i < ledger_count; i++) {
+    fprintf(fp,
+            "%u|%u|%s\n",
+            ledger[i].term,
+            ledger[i].committed,
+            ledger[i].tx);
+  }
+
+  fclose(fp);
+
+  return 0;
+}
+
+int ledger_load_from_file(const char *path) {
+  FILE *fp;
+  char line[MAX_TX_SIZE + 64];
+
+  fp = fopen(path, "r");
+  if (fp == NULL) {
+    return -1;
+  }
+
+  while (fgets(line,
+               sizeof(line),
+               fp) != NULL) {
+    unsigned int term;
+    unsigned int committed;
+
+    char tx[MAX_TX_SIZE];
+
+    line[strcspn(line, "\n")] = '\0';
+
+    if (sscanf(line,
+               "%u|%u|%255[^\n]",
+               &term,
+               &committed,
+               tx) != 3) {
+      fclose(fp);
+      ledger_clear();
+      return -1;
+    }
+
+    if (ledger_append_recovered(tx,
+                                (uint32_t) term,
+                                (uint32_t) committed) < 0) {
+      fclose(fp);
+      ledger_clear();
+      return -1;
+    }
+  }
+
+  fclose(fp);
 
   return 0;
 }
