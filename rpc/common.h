@@ -39,7 +39,9 @@ enum msg_type {
   MSG_SYNC_REQUEST = 14,
   MSG_SYNC_RESPONSE = 15,
   MSG_STATUS = 16,
-  MSG_STATUS_RESPONSE = 17
+  MSG_STATUS_RESPONSE = 17,
+  MSG_REPAIR = 18,
+  MSG_REPAIR_RESPONSE = 19
 };
 
 struct message {

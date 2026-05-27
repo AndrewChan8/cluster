@@ -482,3 +482,112 @@ int handle_status(int client_fd,
 
   return 0;
 }
+
+int handle_repair(int client_fd,
+                  const struct message *msg) {
+  char leader_host[256];
+  char local_status[128];
+  char leader_status[128];
+  char response[512];
+
+  int repaired;
+  int n;
+
+  if (msg->length == 0 || msg->length >= sizeof(leader_host)) {
+    const char *err = "invalid leader hostname";
+
+    send_message(client_fd,
+                 MSG_ERROR,
+                 msg->request_id,
+                 err,
+                 (uint32_t) strlen(err));
+
+    return 0;
+  }
+
+  memcpy(leader_host, msg->payload, msg->length);
+  leader_host[msg->length] = '\0';
+
+  n = snprintf(local_status,
+               sizeof(local_status),
+               "size=%u last_hash=%s",
+               ledger_size(),
+               ledger_last_hash());
+
+  if (n < 0 || (uint32_t) n >= sizeof(local_status)) {
+    const char *err = "failed to build local status";
+
+    send_message(client_fd,
+                 MSG_ERROR,
+                 msg->request_id,
+                 err,
+                 (uint32_t) strlen(err));
+
+    return 0;
+  }
+
+  if (request_status_from_node(leader_host,
+                               "5000",
+                               msg->request_id,
+                               leader_status,
+                               sizeof(leader_status)) < 0) {
+    const char *err = "failed to get leader status";
+
+    send_message(client_fd,
+                 MSG_ERROR,
+                 msg->request_id,
+                 err,
+                 (uint32_t) strlen(err));
+
+    return 0;
+  }
+
+  repaired = 0;
+
+  if (strcmp(local_status, leader_status) != 0) {
+    if (request_sync_from_leader(leader_host,
+                                 "5000",
+                                 msg->request_id) < 0) {
+      const char *err = "repair sync failed";
+
+      send_message(client_fd,
+                   MSG_ERROR,
+                   msg->request_id,
+                   err,
+                   (uint32_t) strlen(err));
+
+      return 0;
+    }
+
+    repaired = 1;
+  }
+
+  n = snprintf(response,
+               sizeof(response),
+               "local_before=\"%s\" leader=\"%s\" repaired=%d",
+               local_status,
+               leader_status,
+               repaired);
+
+  if (n < 0 || (uint32_t) n >= sizeof(response)) {
+    const char *err = "failed to build repair response";
+
+    send_message(client_fd,
+                 MSG_ERROR,
+                 msg->request_id,
+                 err,
+                 (uint32_t) strlen(err));
+
+    return 0;
+  }
+
+  if (send_message(client_fd,
+                   MSG_REPAIR_RESPONSE,
+                   msg->request_id,
+                   response,
+                   (uint32_t) strlen(response)) < 0) {
+    perror("send_message");
+  }
+
+  return 0;
+}

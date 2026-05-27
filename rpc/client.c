@@ -45,6 +45,11 @@ static int handle_response(struct message *msg,
     return 0;
   }
 
+  if (msg->type == MSG_REPAIR_RESPONSE) {
+    printf("%.*s\n", (int) msg->length, msg->payload);
+    return 0;
+  }
+
   fprintf(stderr, "%s: unexpected response type %u\n", op_name, msg->type);
   return -1;
 }
@@ -70,8 +75,9 @@ int main(int argc, char *argv[]) {
         "  %s <host> <port> log\n"
         "  %s <host> <port> mode <strong|quorum|eventual>\n"
         "  %s <host> <port> sync <leader-host>\n"
-        "  %s <host> <port> status\n",
-        argv[0], argv[0], argv[0], argv[0], argv[0]);
+        "  %s <host> <port> status\n"
+        "  %s <host> <port> repair <leader-host>\n",
+        argv[0], argv[0], argv[0], argv[0], argv[0], argv[0]);
     return EXIT_FAILURE;
   }
 
@@ -131,6 +137,17 @@ int main(int argc, char *argv[]) {
     msg_type = MSG_STATUS;
     payload = NULL;
     payload_length = 0;
+
+  } else if (strcmp(op, "repair") == 0) {
+    if (argc != 5) {
+      fprintf(stderr, "Usage: %s <host> <port> repair <leader-host>\n", argv[0]);
+      return EXIT_FAILURE;
+    }
+
+    tx = argv[4];
+    msg_type = MSG_REPAIR;
+    payload = tx;
+    payload_length = (uint32_t) strlen(tx);
 
   } else {
     fprintf(stderr, "Unknown operation: %s\n", op);

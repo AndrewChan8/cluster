@@ -32,4 +32,6 @@ int handle_sync_response(int client_fd, const struct message *msg);
 
 int handle_status(int client_fd, const struct message *msg);
 
+int handle_repair(int client_fd, const struct message *msg);
+
 #endif

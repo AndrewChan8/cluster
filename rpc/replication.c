@@ -20,7 +20,7 @@
 
 #include <stdio.h>
 #include <unistd.h>
-
+#include <string.h>
 
 static int send_to_follower(const char *host,
                             const char *port,
@@ -171,4 +171,62 @@ int request_sync_from_leader(const char *leader_host,
   free_message(&msg);
   close(sockfd);
   return rc;
+}
+
+int request_status_from_node(const char *host,
+                             const char *port,
+                             uint32_t request_id,
+                             char *status_buf,
+                             uint32_t status_buf_size) {
+  int sockfd;
+  struct message msg;
+
+  if (status_buf == NULL || status_buf_size == 0) {
+    return -1;
+  }
+
+  sockfd = connect_to_server(host, port);
+  if (sockfd < 0) {
+    perror("connect_to_server");
+    return -1;
+  }
+
+  if (send_message(sockfd,
+                   MSG_STATUS,
+                   request_id,
+                   NULL,
+                   0) < 0) {
+    perror("send_message");
+    close(sockfd);
+    return -1;
+  }
+
+  if (recv_message(sockfd, &msg) < 0) {
+    perror("recv_message");
+    close(sockfd);
+    return -1;
+  }
+
+  if (msg.type != MSG_STATUS_RESPONSE) {
+    fprintf(stderr,
+            "expected MSG_STATUS_RESPONSE, got %u\n",
+            msg.type);
+
+    free_message(&msg);
+    close(sockfd);
+    return -1;
+  }
+
+  if (msg.length >= status_buf_size) {
+    free_message(&msg);
+    close(sockfd);
+    return -1;
+  }
+
+  memcpy(status_buf, msg.payload, msg.length);
+  status_buf[msg.length] = '\0';
+
+  free_message(&msg);
+  close(sockfd);
+  return 0;
 }
