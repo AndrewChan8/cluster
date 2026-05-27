@@ -1,3 +1,11 @@
+/*
+  handlers.h
+
+  Defines protocol message handlers for distributed ledger operations.
+  Handlers process client requests, replication events, synchronization,
+  consistency mode coordination, and replica status operations.
+*/
+
 #ifndef HANDLERS_H
 #define HANDLERS_H
 

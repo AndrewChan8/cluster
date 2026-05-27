@@ -1,3 +1,19 @@
+/*
+  replication.c
+
+  Implements inter-node communication helpers for distributed replication.
+  This module is responsible for:
+
+  - follower append replication
+  - strong consistency prepare/commit messaging
+  - abort propagation
+  - follower recovery synchronization
+  - leader snapshot requests
+
+  Replication operations use the shared framed TCP protocol defined in
+  common.c/common.h.
+*/
+
 #include "replication.h"
 #include "common.h"
 #include "ledger.h"

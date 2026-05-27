@@ -1,3 +1,11 @@
+/*
+  replication.h
+
+  Defines inter-node replication and synchronization operations used by the
+  distributed ledger system. Provides helper functions for append replication,
+  strong consistency prepare/commit flows, abort handling, and recovery sync.
+*/
+
 #ifndef REPLICATION_H
 #define REPLICATION_H
 

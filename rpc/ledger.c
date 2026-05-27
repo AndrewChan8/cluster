@@ -1,3 +1,18 @@
+/*
+  ledger.c
+
+  Implements the persistent append-only replicated ledger used by the system.
+  Ledger entries are hash-linked to previous entries, allowing replicas to
+  detect divergence and verify convergence after synchronization.
+
+  This module also implements:
+  - local ledger appends
+  - ledger serialization
+  - snapshot synchronization
+  - persistent storage recovery
+  - replica status/hash inspection
+*/
+
 #include "ledger.h"
 
 #include <stdlib.h>

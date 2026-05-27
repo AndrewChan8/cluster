@@ -1,3 +1,20 @@
+/*
+  handlers.c
+
+  Implements the primary distributed protocol logic for the replicated ledger.
+  This module coordinates:
+
+  - client append requests
+  - replication behavior
+  - strong/quorum/eventual consistency semantics
+  - prepare/commit/abort flows
+  - recovery synchronization
+  - replica divergence inspection
+  - runtime consistency mode switching
+
+  The handler layer acts as the coordination/control plane of the system.
+*/
+
 #include "handlers.h"
 #include "ledger.h"
 #include "replication.h"

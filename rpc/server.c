@@ -1,3 +1,15 @@
+/*
+  server.c
+
+  Entry point for each replicated ledger server node.
+  The server determines its role from the hostname, initializes the local
+  ledger, accepts TCP client connections, receives framed protocol messages,
+  and dispatches each message to the appropriate handler.
+
+  node1 runs as the leader.
+  node2 and node3 run as followers.
+*/
+
 #include "common.h"
 #include "ledger.h"
 #include "replication.h"

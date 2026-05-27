@@ -1,3 +1,12 @@
+/*
+  common.h
+
+  Shared networking and protocol definitions for the replicated ledger system.
+  Defines message types, framed message structure, socket helpers, and reliable
+  read/write utilities used by both clients and servers.
+*/
+
+
 #ifndef COMMON_H
 #define COMMON_H
 

@@ -1,3 +1,10 @@
+/*
+  ledger.h
+
+  Defines the append-only replicated ledger structure and ledger operations.
+  Provides interfaces for local appends, persistence, synchronization,
+  serialization, recovery, and replica status inspection.
+*/
 #ifndef LEDGER_H
 #define LEDGER_H
 

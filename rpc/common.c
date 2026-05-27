@@ -1,3 +1,11 @@
+/*
+  common.c
+  
+  Implements shared TCP socket utilities and framed message send/receive logic.
+  This file provides the reliable byte-oriented I/O layer used by the client,
+  server, and inter-node replication paths.
+*/
+
 #include "common.h"
 
 #include <stdio.h>
