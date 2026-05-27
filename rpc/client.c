@@ -1,3 +1,14 @@
+/*
+  client.c
+
+  Command-line client for interacting with the replicated ledger system.
+  Supports append, log, status, consistency mode switching, and manual
+  recovery synchronization commands.
+
+  The client is also used by experiment scripts to drive system behavior
+  under normal and failure scenarios.
+*/
+
 #include "common.h"
 
 #include <stdio.h>
