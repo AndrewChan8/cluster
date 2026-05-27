@@ -82,6 +82,7 @@ The current prototype includes:
 - Ledger status queries using `size` and `last_hash`
 - Divergence detection through hash comparison
 - Experiment scripts for normal and failure scenarios
+- Status-based anti-entropy repair
 
 ## Consistency Modes
 
@@ -177,6 +178,8 @@ The protocol supports:
 | `MSG_SYNC_RESPONSE` | leader ledger snapshot response |
 | `MSG_STATUS` | replica status query |
 | `MSG_STATUS_RESPONSE` | replica hash/size response |
+| `MSG_REPAIR` | status-based anti-entropy repair request |
+| `MSG_REPAIR_RESPONSE` | repair result response |
 
 The protocol uses explicit payload lengths and request IDs to support reliable framed communication over TCP sockets.
 
@@ -300,6 +303,11 @@ Recover followers from the leader:
 ./client node3 5000 sync node1
 ```
 
+Repair a follower only if it differs from the leader:
+```
+./client node2 5000 repair node1
+```
+
 ## Experimental Evaluation
 
 The project includes experiments for comparing consistency behavior under normal operation and failure scenarios.
@@ -339,7 +347,7 @@ These experiments demonstrate the tradeoffs between consistency, availability, d
 
 Potential future improvements include:
 
-- automatic anti-entropy synchronization
+- periodic background anti-entropy synchronization
 - leader election and failover
 - logical clock integration
 - conflict resolution mechanisms
