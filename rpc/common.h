@@ -15,7 +15,7 @@
 #include <sys/types.h>
 
 #define BACKLOG 16
-#define MAX_PAYLOAD_SIZE 4096
+#define MAX_PAYLOAD_SIZE 65536
 
 enum msg_type {
   MSG_PING = 1,
