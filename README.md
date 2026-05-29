@@ -63,6 +63,8 @@ The architecture supports:
 - runtime consistency switching
 - divergence detection
 - manual recovery synchronization
+- automatic anti-entropy repair
+- self-healing follower recovery
 
 ## Features
 
@@ -83,6 +85,8 @@ The current prototype includes:
 - Divergence detection through hash comparison
 - Experiment scripts for normal and failure scenarios
 - Status-based anti-entropy repair
+- Automatic background anti-entropy repair
+- Self-healing follower convergence after outages
 
 ## Consistency Modes
 
@@ -152,6 +156,12 @@ Replica consistency can be verified using:
 - ledger size
 - last ledger hash
 
+The system also supports automatic anti-entropy repair on follower nodes.
+
+Followers periodically compare their local ledger status against the leader using `size` and `last_hash`. If a follower detects divergence, it automatically requests synchronization and repairs itself without requiring a manual client command.
+
+This allows stale followers to converge automatically after outages.
+
 ## Message Protocol
 
 The system uses a custom framed TCP message protocol for all client and inter-node communication.
@@ -189,8 +199,13 @@ The protocol uses explicit payload lengths and request IDs to support reliable f
 cluster/
 ├── README.md
 ├── bench/
+│   ├── results/
+│   ├── run_append_latency.sh
+│   ├── time_command.sh
 ├── docs/
 ├── rpc/
+│   ├── anti_entropy.c
+│   ├── anti_entropy.h
 │   ├── Makefile
 │   ├── client.c
 │   ├── server.c
@@ -210,7 +225,7 @@ Main directories:
 - `rpc/`: core distributed ledger implementation
 - `rpc/scripts/`: experiment and failure-testing scripts
 - `docs/`: experiment notes and evaluation results
-- `bench/`: future benchmarking and performance testing
+- `bench/`: benchmarking scripts and performance measurements
 
 ## Building
 
@@ -308,17 +323,27 @@ Repair a follower only if it differs from the leader:
 ./client node2 5000 repair node1
 ```
 
+Automatic anti-entropy repair runs in the background on follower nodes:
+
+```
+anti-entropy: divergence detected
+anti-entropy: local=size=0 last_hash=GENESIS
+anti-entropy: leader=size=1 last_hash=...
+Recovered ledger from leader:
+anti-entropy: repair completed
+```
+
 ## Experimental Evaluation
 
 The project includes experiments for comparing consistency behavior under normal operation and failure scenarios.
 
-The main experimental questions are:
+The experimental evaluation includes:
 
-- Does strong consistency prevent partial commits?
-- Can quorum consistency continue when one follower is unavailable?
-- Can eventual consistency continue when all followers are unavailable?
-- How can divergence be detected across replicas?
-- Can synchronization repair divergent replicas?
+- strong consistency with all nodes available
+- strong consistency with follower failure
+- quorum consistency with follower failure
+- eventual consistency with follower outages
+- anti-entropy repair after divergence
 
 Experiment scripts are included in:
 
@@ -329,13 +354,6 @@ rpc/scripts/test_failures.sh
 
 The normal-mode experiment records replica status after append operations under each consistency mode.
 
-The failure experiment checklist covers:
-
-- strong mode with a follower down
-- quorum mode with a follower down
-- eventual mode with followers down
-- recovery synchronization after divergence
-
 Replica convergence is evaluated using:
 
 - ledger size
@@ -343,21 +361,33 @@ Replica convergence is evaluated using:
 
 These experiments demonstrate the tradeoffs between consistency, availability, divergence, and recovery behavior under distributed failures.
 
+## Benchmark Summary
+
+Append latency measurements were collected across all consistency modes.
+
+| Mode | Average Latency |
+|--------|--------:|
+| Strong | 24.8 ms |
+| Quorum | 16.2 ms |
+| Eventual | 17.4 ms |
+
+The results demonstrate that stronger coordination increases write latency while weaker coordination improves responsiveness and availability.
+
 ## Future Work
 
 Potential future improvements include:
 
-- periodic background anti-entropy synchronization
 - leader election and failover
 - logical clock integration
 - conflict resolution mechanisms
 - larger-scale logical node simulation
 - configurable cluster membership
 - network partition simulation
-- replication latency benchmarking
+- extended throughput and scalability benchmarking
 - automatic fault injection
 - performance measurements under load
 - consensus-based commit protocols
 - visualization and monitoring dashboards
+- configurable anti-entropy interval
 
 The current implementation focuses primarily on consistency semantics, replication behavior, divergence, and recovery in distributed replicated systems.
