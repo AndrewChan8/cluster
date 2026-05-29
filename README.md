@@ -46,7 +46,7 @@ The system uses a TCP-based RPC-style communication layer with framed messages c
 - payload length
 - payload data
 
-Ledger entries are append-only and hash-linked to previous entries, forming a simplified blockchain-like replication structure.
+Ledger entries are append-only and hash-linked to previous entries, forming a SHA-256 hash-linked append-only ledger structure.
 
 Each node maintains:
 
@@ -64,6 +64,7 @@ The architecture supports:
 - divergence detection
 - manual recovery synchronization
 - automatic anti-entropy repair
+- periodic anti-entropy verification
 - self-healing follower recovery
 
 ## Features
@@ -73,7 +74,7 @@ The current prototype includes:
 - TCP client/server communication
 - Custom framed message protocol
 - Append-only replicated ledger
-- Hash-linked ledger entries
+- SHA-256 hash-linked ledger entries using OpenSSL
 - Persistent ledger storage on disk
 - Fixed leader/follower deployment model
 - Runtime consistency mode switching
@@ -204,11 +205,10 @@ cluster/
 │   ├── time_command.sh
 ├── docs/
 ├── rpc/
-│   ├── anti_entropy.c
-│   ├── anti_entropy.h
 │   ├── Makefile
 │   ├── client.c
 │   ├── server.c
+│   ├── anti_entropy.c / anti_entropy.h
 │   ├── common.c / common.h
 │   ├── ledger.c / ledger.h
 │   ├── replication.c / replication.h
@@ -228,6 +228,14 @@ Main directories:
 - `bench/`: benchmarking scripts and performance measurements
 
 ## Building
+
+Install OpenSSL development headers before building:
+
+```
+sudo apt install libssl-dev
+```
+
+The server links against OpenSSL `libcrypto` for SHA-256 hashing.
 
 Build the project from the `rpc/` directory:
 
@@ -371,7 +379,7 @@ Append latency measurements were collected across all consistency modes.
 | Quorum | 16.2 ms |
 | Eventual | 17.4 ms |
 
-The results demonstrate that stronger coordination increases write latency while weaker coordination improves responsiveness and availability.
+The benchmark results demonstrate the classic distributed systems tradeoff between consistency and performance. Strong consistency incurred the highest latency because writes required full follower coordination. Quorum and eventual consistency reduced coordination overhead and therefore completed writes more quickly.
 
 ## Future Work
 
@@ -391,3 +399,6 @@ Potential future improvements include:
 - configurable anti-entropy interval
 
 The current implementation focuses primarily on consistency semantics, replication behavior, divergence, and recovery in distributed replicated systems.
+
+Current implementation uses full snapshot anti-entropy repair.
+Future versions could support incremental log-based repair.

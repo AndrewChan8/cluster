@@ -31,3 +31,8 @@ anti_entropy.o: anti_entropy.c anti_entropy.h ledger.h replication.h
 
 clean:
 	rm -f *.o server client
+
+reset:
+	rm -f ledger.data
+
+distclean: clean reset
