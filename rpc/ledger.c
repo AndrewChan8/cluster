@@ -15,6 +15,7 @@
 
 #include "ledger.h"
 
+#include <openssl/evp.h>
 #include <stdlib.h>
 #include <arpa/inet.h>
 #include <stdio.h>
@@ -25,24 +26,38 @@
 static ledger_entry_t ledger[MAX_LEDGER_ENTRIES];
 static uint32_t ledger_count = 0;
 
-static void compute_fake_hash(const ledger_entry_t *entry,
-                              char out[HASH_SIZE + 1]) {
-  unsigned long h = 5381;
-  const unsigned char *p;
+static void compute_hash(const ledger_entry_t *entry,
+                         char out[HASH_SIZE + 1]) {
+  EVP_MD_CTX *ctx;
+  unsigned char digest[EVP_MAX_MD_SIZE];
+  unsigned int digest_len;
+  int i;
 
-  h = ((h << 5) + h) + entry->index;
-  h = ((h << 5) + h) + entry->term;
-  h = ((h << 5) + h) + entry->committed;
-
-  for (p = (const unsigned char *) entry->tx; *p != '\0'; p++) {
-    h = ((h << 5) + h) + *p;
+  ctx = EVP_MD_CTX_new();
+  if (ctx == NULL) {
+    snprintf(out, HASH_SIZE + 1, "%064x", 0);
+    return;
   }
 
-  for (p = (const unsigned char *) entry->prev_hash; *p != '\0'; p++) {
-    h = ((h << 5) + h) + *p;
+  if (EVP_DigestInit_ex(ctx, EVP_sha256(), NULL) != 1 ||
+      EVP_DigestUpdate(ctx, &entry->index, sizeof(entry->index)) != 1 ||
+      EVP_DigestUpdate(ctx, &entry->term, sizeof(entry->term)) != 1 ||
+      EVP_DigestUpdate(ctx, &entry->committed, sizeof(entry->committed)) != 1 ||
+      EVP_DigestUpdate(ctx, entry->tx, strlen(entry->tx)) != 1 ||
+      EVP_DigestUpdate(ctx, entry->prev_hash, strlen(entry->prev_hash)) != 1 ||
+      EVP_DigestFinal_ex(ctx, digest, &digest_len) != 1) {
+    EVP_MD_CTX_free(ctx);
+    snprintf(out, HASH_SIZE + 1, "%064x", 0);
+    return;
   }
 
-  snprintf(out, HASH_SIZE + 1, "%064lx", h);
+  EVP_MD_CTX_free(ctx);
+
+  for (i = 0; i < (int) digest_len; i++) {
+    snprintf(out + (i * 2), 3, "%02x", digest[i]);
+  }
+
+  out[HASH_SIZE] = '\0';
 }
 
 static int ledger_append_entry(const char *tx,
@@ -78,7 +93,7 @@ static int ledger_append_entry(const char *tx,
 
   entry->prev_hash[HASH_SIZE] = '\0';
 
-  compute_fake_hash(entry, entry->hash);
+  compute_hash(entry, entry->hash);
 
   ledger_count++;
 

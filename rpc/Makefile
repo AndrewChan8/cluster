@@ -4,8 +4,8 @@ CFLAGS = -Wall -Wextra -Werror -pedantic -std=c11 -O2 -pthread -D_POSIX_C_SOURCE
 all: server client
 
 server: server.o common.o ledger.o replication.o handlers.o anti_entropy.o
-	$(CC) $(CFLAGS) -o server server.o common.o ledger.o replication.o handlers.o anti_entropy.o
-
+	$(CC) $(CFLAGS) -o server server.o common.o ledger.o replication.o handlers.o anti_entropy.o -lcrypto
+	
 client: client.o common.o
 	$(CC) $(CFLAGS) -o client client.o common.o
 
