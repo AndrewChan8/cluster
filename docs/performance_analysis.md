@@ -82,6 +82,18 @@ If the follower differed from the leader, the follower requested a full snapshot
 
 This restored convergence after temporary divergence.
 
+## Automatic Anti-Entropy Repair
+
+The automatic anti-entropy mechanism extends the manual repair functionality by continuously monitoring replica state in the background.
+
+Follower nodes periodically compare their local ledger status against the leader using `size` and `last_hash`.
+
+When divergence is detected, the follower automatically requests synchronization and repairs itself without requiring operator intervention.
+
+This behavior improves system resilience and demonstrates a simple self-healing recovery mechanism commonly found in eventually consistent distributed systems.
+
+The experiment showed that followers which missed writes during outages automatically converged back to the leader state after reconnecting.
+
 ## Summary
 
 The benchmark and failure experiments show a consistent distributed systems tradeoff:
