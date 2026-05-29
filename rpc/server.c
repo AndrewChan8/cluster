@@ -15,6 +15,7 @@
 #include "replication.h"
 #include "handlers.h"
 #include "server_context.h"
+#include "anti_entropy.h"
 
 #include <stdio.h>
 #include <string.h>
@@ -50,6 +51,10 @@ int main(int argc, char *argv[]) {
          hostname);
 
   ledger_init();
+
+  if (role == ROLE_FOLLOWER) {
+    start_anti_entropy_thread("node1", argv[1]);
+  }
 
   while (1) {
     struct sockaddr_storage client_addr;
