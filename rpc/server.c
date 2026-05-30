@@ -6,8 +6,8 @@
   ledger, accepts TCP client connections, receives framed protocol messages,
   and dispatches each message to the appropriate handler.
 
-  node1 runs as the leader.
-  node2 and node3 run as followers.
+  All nodes start as followers.
+  A leader is selected dynamically through the election module.
 */
 
 #include "common.h"
@@ -16,6 +16,7 @@
 #include "handlers.h"
 #include "server_context.h"
 #include "anti_entropy.h"
+#include "election.h"
 
 #include <stdio.h>
 #include <string.h>
@@ -23,6 +24,7 @@
 #include <unistd.h>
 #include <sys/types.h>
 #include <sys/socket.h>
+#include <pthread.h>
 
 int main(int argc, char *argv[]) {
   if (argc != 2) {
@@ -37,24 +39,59 @@ int main(int argc, char *argv[]) {
   }
   hostname[sizeof(hostname) - 1] = '\0';
 
-  server_role_t role;
-  if (strcmp(hostname, "node1") == 0) {
-    role = ROLE_LEADER;
-  } else {
-    role = ROLE_FOLLOWER;
+  server_context_t ctx;
+
+  memset(&ctx, 0, sizeof(ctx));
+
+  snprintf(ctx.node_id,
+          sizeof(ctx.node_id),
+          "%s",
+          hostname);
+
+  snprintf(ctx.port,
+          sizeof(ctx.port),
+          "%s",
+          argv[1]);
+          
+  ctx.current_term = 1;
+  ctx.last_heartbeat_ms = 0;
+  ctx.mode = CONSISTENCY_STRONG;
+
+  ctx.current_leader[0] = '\0';
+
+  ctx.voted_for[0] = '\0';
+
+  ctx.role = ROLE_FOLLOWER;
+
+  if (pthread_mutex_init(&ctx.lock, NULL) != 0) {
+    perror("pthread_mutex_init");
+    return EXIT_FAILURE;
   }
 
+  election_init(&ctx);
+
   int listen_fd = create_server_socket(argv[1]);
+
+  if (start_heartbeat_thread(&ctx) < 0) {
+    fprintf(stderr, "failed to start heartbeat thread\n");
+    close(listen_fd);
+    return EXIT_FAILURE;
+  }
+
+  if (start_election_timeout_thread(&ctx) < 0) {
+    fprintf(stderr, "failed to start election timeout thread\n");
+    close(listen_fd);
+    return EXIT_FAILURE;
+  }
+
   printf("Server listening on port %s as %s (%s)\n",
-         argv[1],
-         role == ROLE_LEADER ? "LEADER" : "FOLLOWER",
-         hostname);
+        argv[1],
+        ctx.role == ROLE_LEADER ? "LEADER" : "FOLLOWER",
+        hostname);
 
   ledger_init();
 
-  if (role == ROLE_FOLLOWER) {
-    start_anti_entropy_thread("node1", argv[1]);
-  }
+  start_anti_entropy_thread(&ctx);
 
   while (1) {
     struct sockaddr_storage client_addr;
@@ -73,8 +110,13 @@ int main(int argc, char *argv[]) {
       continue;
     }
 
-    printf("Received message: type=%u request_id=%u length=%u\n",
-           msg.type, msg.request_id, msg.length);
+    if (msg.type != MSG_HEARTBEAT &&
+        msg.type != MSG_STATUS) {
+      printf("Received message: type=%u request_id=%u length=%u\n",
+            msg.type,
+            msg.request_id,
+            msg.length);
+    }
 
     if (msg.type == MSG_PING) {
       if (send_message(client_fd, MSG_PONG, msg.request_id, NULL, 0) < 0) {
@@ -88,22 +130,22 @@ int main(int argc, char *argv[]) {
       }
 
     } else if (msg.type == MSG_APPEND) {
-      handle_append(client_fd, &msg, role, argv[1]);
+      handle_append(client_fd, &msg, &ctx);
 
     } else if (msg.type == MSG_REPL_APPEND) {
-      handle_repl_append(client_fd, &msg);
+      handle_repl_append(client_fd, &msg, &ctx);
 
     } else if (msg.type == MSG_GET_LOG) {
       handle_get_log(client_fd, &msg);
 
     } else if (msg.type == MSG_SET_MODE) {
-      handle_set_mode(client_fd, &msg, role);
+      handle_set_mode(client_fd, &msg, &ctx);
       
     } else if (msg.type == MSG_PREPARE_APPEND) {
       handle_prepare_append(client_fd, &msg);
 
     } else if (msg.type == MSG_COMMIT_APPEND) {
-      handle_commit_append(client_fd, &msg);
+      handle_commit_append(client_fd, &msg, &ctx);
 
     } else if (msg.type == MSG_ABORT) {
       handle_abort(client_fd, &msg);
@@ -115,11 +157,17 @@ int main(int argc, char *argv[]) {
       handle_sync_response(client_fd, &msg);
       
     } else if (msg.type == MSG_STATUS) {
-      handle_status(client_fd, &msg);
+      handle_status(client_fd, &msg, &ctx);
 
     } else if (msg.type == MSG_REPAIR) {
       handle_repair(client_fd, &msg);
     
+    } else if (msg.type == MSG_REQUEST_VOTE) {
+      handle_request_vote(client_fd, &msg, &ctx);
+
+    } else if (msg.type == MSG_HEARTBEAT) {
+      handle_heartbeat(client_fd, &msg, &ctx);
+
     } else {
       fprintf(stderr, "Unknown message type: %u\n", msg.type);
     }

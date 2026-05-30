@@ -50,6 +50,18 @@ static int handle_response(struct message *msg,
     return 0;
   }
 
+  if (msg->type == MSG_HEARTBEAT_RESPONSE) {
+    printf("%s succeeded\n", op_name);
+    return 0;
+  }
+
+  if (msg->type == MSG_REQUEST_VOTE_RESPONSE) {
+    printf("vote result: %.*s\n",
+          (int) msg->length,
+          msg->payload);
+    return 0;
+  }
+
   fprintf(stderr, "%s: unexpected response type %u\n", op_name, msg->type);
   return -1;
 }
@@ -76,8 +88,10 @@ int main(int argc, char *argv[]) {
         "  %s <host> <port> mode <strong|quorum|eventual>\n"
         "  %s <host> <port> sync <leader-host>\n"
         "  %s <host> <port> status\n"
-        "  %s <host> <port> repair <leader-host>\n",
-        argv[0], argv[0], argv[0], argv[0], argv[0], argv[0]);
+        "  %s <host> <port> repair <leader-host>\n"
+        "  %s <host> <port> request_vote\n"
+        "  %s <host> <port> heartbeat\n",
+        argv[0], argv[0], argv[0], argv[0], argv[0], argv[0], argv[0], argv[0]);
     return EXIT_FAILURE;
   }
 
@@ -148,6 +162,28 @@ int main(int argc, char *argv[]) {
     msg_type = MSG_REPAIR;
     payload = tx;
     payload_length = (uint32_t) strlen(tx);
+
+  } else if (strcmp(op, "request_vote") == 0) {
+    if (argc != 4 && argc != 5) {
+      fprintf(stderr, "Usage: %s <host> <port> request_vote [candidate-id]\n", argv[0]);
+      return EXIT_FAILURE;
+    }
+
+    tx = (argc == 5) ? argv[4] : host;
+
+    msg_type = MSG_REQUEST_VOTE;
+    payload = tx;
+    payload_length = (uint32_t) strlen(tx);
+      
+  } else if (strcmp(op, "heartbeat") == 0) {
+    if (argc != 4) {
+      fprintf(stderr, "Usage: %s <host> <port> heartbeat\n", argv[0]);
+      return EXIT_FAILURE;
+    }
+
+    msg_type = MSG_HEARTBEAT;
+    payload = host;
+    payload_length = (uint32_t) strlen(host);
 
   } else {
     fprintf(stderr, "Unknown operation: %s\n", op);
