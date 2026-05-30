@@ -18,6 +18,7 @@
 #include "handlers.h"
 #include "ledger.h"
 #include "replication.h"
+#include "failure_injector.h"
 
 #include <stdio.h>
 #include <string.h>
@@ -463,6 +464,41 @@ int handle_repair(int client_fd,
 
   if (send_message(client_fd, MSG_REPAIR_RESPONSE, msg->request_id,
                    response, (uint32_t) strlen(response)) < 0) {
+    perror("send_message");
+  }
+
+  return 0;
+}
+
+int handle_inject_latency(int client_fd,
+                          const struct message *msg) {
+  char buf[32];
+  uint32_t latency_ms;
+
+  if (msg->length == 0 || msg->length >= sizeof(buf)) {
+    const char *err = "invalid latency";
+
+    send_message(client_fd,
+                 MSG_ERROR,
+                 msg->request_id,
+                 err,
+                 (uint32_t) strlen(err));
+
+    return 0;
+  }
+
+  memcpy(buf, msg->payload, msg->length);
+  buf[msg->length] = '\0';
+
+  latency_ms = (uint32_t) strtoul(buf, NULL, 10);
+
+  failure_injector_set_latency(latency_ms);
+
+  if (send_message(client_fd,
+                   MSG_INJECT_LATENCY_RESPONSE,
+                   msg->request_id,
+                   NULL,
+                   0) < 0) {
     perror("send_message");
   }
 

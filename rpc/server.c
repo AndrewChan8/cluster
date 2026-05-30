@@ -17,6 +17,7 @@
 #include "server_context.h"
 #include "anti_entropy.h"
 #include "election.h"
+#include "failure_injector.h"
 
 #include <stdio.h>
 #include <string.h>
@@ -67,6 +68,8 @@ int main(int argc, char *argv[]) {
     perror("pthread_mutex_init");
     return EXIT_FAILURE;
   }
+
+  failure_injector_init();
 
   election_init(&ctx);
 
@@ -167,6 +170,9 @@ int main(int argc, char *argv[]) {
 
     } else if (msg.type == MSG_HEARTBEAT) {
       handle_heartbeat(client_fd, &msg, &ctx);
+
+    } else if (msg.type == MSG_INJECT_LATENCY) {
+      handle_inject_latency(client_fd, &msg);
 
     } else {
       fprintf(stderr, "Unknown message type: %u\n", msg.type);

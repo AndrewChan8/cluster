@@ -34,4 +34,6 @@ int handle_status(int client_fd, const struct message *msg, server_context_t *ct
 
 int handle_repair(int client_fd, const struct message *msg);
 
+int handle_inject_latency(int client_fd, const struct message *msg);
+
 #endif

@@ -62,6 +62,11 @@ static int handle_response(struct message *msg,
     return 0;
   }
 
+  if (msg->type == MSG_INJECT_LATENCY_RESPONSE) {
+    printf("%s succeeded\n", op_name);
+    return 0;
+  }
+
   fprintf(stderr, "%s: unexpected response type %u\n", op_name, msg->type);
   return -1;
 }
@@ -90,8 +95,9 @@ int main(int argc, char *argv[]) {
         "  %s <host> <port> status\n"
         "  %s <host> <port> repair <leader-host>\n"
         "  %s <host> <port> request_vote\n"
-        "  %s <host> <port> heartbeat\n",
-        argv[0], argv[0], argv[0], argv[0], argv[0], argv[0], argv[0], argv[0]);
+        "  %s <host> <port> heartbeat\n"
+        "  %s <host> <port> latency <milliseconds>\n",
+        argv[0], argv[0], argv[0], argv[0], argv[0], argv[0], argv[0], argv[0], argv[0]);
     return EXIT_FAILURE;
   }
 
@@ -184,6 +190,17 @@ int main(int argc, char *argv[]) {
     msg_type = MSG_HEARTBEAT;
     payload = host;
     payload_length = (uint32_t) strlen(host);
+
+  } else if (strcmp(op, "latency") == 0) {
+    if (argc != 5) {
+      fprintf(stderr, "Usage: %s <host> <port> latency <milliseconds>\n", argv[0]);
+      return EXIT_FAILURE;
+    }
+
+    tx = argv[4];
+    msg_type = MSG_INJECT_LATENCY;
+    payload = tx;
+    payload_length = (uint32_t) strlen(tx);
 
   } else {
     fprintf(stderr, "Unknown operation: %s\n", op);

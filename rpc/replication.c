@@ -17,6 +17,7 @@
 #include "replication.h"
 #include "common.h"
 #include "ledger.h"
+#include "failure_injector.h"
 
 #include <stdio.h>
 #include <unistd.h>
@@ -37,6 +38,8 @@ static int send_to_follower(const char *host,
     perror("connect_to_server");
     return -1;
   }
+
+  failure_inject_before_send(host, msg_type);
 
   if (send_message(sockfd, msg_type, request_id, payload, payload_length) < 0) {
     perror("send_message");

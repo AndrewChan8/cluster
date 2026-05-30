@@ -3,9 +3,9 @@ CFLAGS = -Wall -Wextra -Werror -pedantic -std=c11 -O2 -pthread -D_POSIX_C_SOURCE
 
 all: server client
 
-server: server.o common.o ledger.o replication.o handlers.o anti_entropy.o election.o
-	$(CC) $(CFLAGS) -o server server.o common.o ledger.o replication.o handlers.o anti_entropy.o election.o -lcrypto
-	
+server: server.o common.o ledger.o replication.o handlers.o anti_entropy.o election.o failure_injector.o
+	$(CC) $(CFLAGS) -o server server.o common.o ledger.o replication.o handlers.o anti_entropy.o election.o failure_injector.o -lcrypto
+
 client: client.o common.o
 	$(CC) $(CFLAGS) -o client client.o common.o
 
@@ -31,6 +31,9 @@ anti_entropy.o: anti_entropy.c anti_entropy.h ledger.h replication.h server_cont
 
 election.o: election.c election.h server_context.h
 	$(CC) $(CFLAGS) -c election.c
+
+failure_injector.o: failure_injector.c failure_injector.h
+	$(CC) $(CFLAGS) -c failure_injector.c
 
 clean:
 	rm -f *.o server client
