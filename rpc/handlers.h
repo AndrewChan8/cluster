@@ -38,4 +38,8 @@ int handle_inject_latency(int client_fd, const struct message *msg);
 
 int handle_inject_drop(int client_fd, const struct message *msg);
 
+int handle_inject_partition(int client_fd, const struct message *msg);
+
+int handle_inject_heal(int client_fd, const struct message *msg);
+
 #endif

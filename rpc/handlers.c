@@ -539,3 +539,52 @@ int handle_inject_drop(int client_fd,
 
   return 0;
 }
+
+int handle_inject_partition(int client_fd,
+                            const struct message *msg) {
+  char peer[256];
+
+  if (msg->length == 0 || msg->length >= sizeof(peer)) {
+    const char *err = "invalid partition peer";
+
+    send_message(client_fd,
+                 MSG_ERROR,
+                 msg->request_id,
+                 err,
+                 (uint32_t) strlen(err));
+
+    return 0;
+  }
+
+  memcpy(peer, msg->payload, msg->length);
+  peer[msg->length] = '\0';
+
+  failure_injector_set_partition(peer);
+
+  if (send_message(client_fd,
+                   MSG_INJECT_PARTITION_RESPONSE,
+                   msg->request_id,
+                   NULL,
+                   0) < 0) {
+    perror("send_message");
+  }
+
+  return 0;
+}
+
+int handle_inject_heal(int client_fd,
+                       const struct message *msg) {
+  (void) msg;
+
+  failure_injector_clear_partition();
+
+  if (send_message(client_fd,
+                   MSG_INJECT_HEAL_RESPONSE,
+                   msg->request_id,
+                   NULL,
+                   0) < 0) {
+    perror("send_message");
+  }
+
+  return 0;
+}

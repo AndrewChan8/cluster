@@ -177,6 +177,12 @@ int main(int argc, char *argv[]) {
     } else if (msg.type == MSG_INJECT_DROP) {
       handle_inject_drop(client_fd, &msg);
 
+    } else if (msg.type == MSG_INJECT_PARTITION) {
+      handle_inject_partition(client_fd, &msg);
+
+    } else if (msg.type == MSG_INJECT_HEAL) {
+      handle_inject_heal(client_fd, &msg);
+      
     } else {
       fprintf(stderr, "Unknown message type: %u\n", msg.type);
     }

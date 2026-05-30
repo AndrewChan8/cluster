@@ -16,4 +16,8 @@ void failure_injector_set_drop(uint32_t drop_percent);
 
 uint32_t failure_injector_get_drop(void);
 
+void failure_injector_set_partition(const char *peer);
+
+void failure_injector_clear_partition(void);
+
 #endif

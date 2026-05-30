@@ -72,6 +72,16 @@ static int handle_response(struct message *msg,
     return 0;
   }
 
+  if (msg->type == MSG_INJECT_PARTITION_RESPONSE) {
+    printf("%s succeeded\n", op_name);
+    return 0;
+  }
+
+  if (msg->type == MSG_INJECT_HEAL_RESPONSE) {
+    printf("%s succeeded\n", op_name);
+    return 0;
+  }
+
   fprintf(stderr, "%s: unexpected response type %u\n", op_name, msg->type);
   return -1;
 }
@@ -102,8 +112,10 @@ int main(int argc, char *argv[]) {
         "  %s <host> <port> request_vote\n"
         "  %s <host> <port> heartbeat\n"
         "  %s <host> <port> latency <milliseconds>\n"
-        "  %s <host> <port> drop <percent>\n",
-        argv[0], argv[0], argv[0], argv[0], argv[0], argv[0], argv[0], argv[0], argv[0], argv[0]);
+        "  %s <host> <port> drop <percent>\n"
+        "  %s <host> <port> partition <peer>\n"
+        "  %s <host> <port> heal\n",
+        argv[0], argv[0], argv[0], argv[0], argv[0], argv[0], argv[0], argv[0], argv[0], argv[0], argv[0], argv[0]);
     return EXIT_FAILURE;
   }
 
@@ -219,6 +231,27 @@ int main(int argc, char *argv[]) {
     payload = tx;
     payload_length = (uint32_t) strlen(tx);
 
+  } else if (strcmp(op, "partition") == 0) {
+    if (argc != 5) {
+      fprintf(stderr, "Usage: %s <host> <port> partition <peer>\n", argv[0]);
+      return EXIT_FAILURE;
+    }
+
+    tx = argv[4];
+    msg_type = MSG_INJECT_PARTITION;
+    payload = tx;
+    payload_length = (uint32_t) strlen(tx);
+
+  } else if (strcmp(op, "heal") == 0) {
+    if (argc != 4) {
+      fprintf(stderr, "Usage: %s <host> <port> heal\n", argv[0]);
+      return EXIT_FAILURE;
+    }
+
+    msg_type = MSG_INJECT_HEAL;
+    payload = NULL;
+    payload_length = 0;
+    
   } else {
     fprintf(stderr, "Unknown operation: %s\n", op);
     return EXIT_FAILURE;
