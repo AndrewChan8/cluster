@@ -174,6 +174,9 @@ int main(int argc, char *argv[]) {
     } else if (msg.type == MSG_INJECT_LATENCY) {
       handle_inject_latency(client_fd, &msg);
 
+    } else if (msg.type == MSG_INJECT_DROP) {
+      handle_inject_drop(client_fd, &msg);
+
     } else {
       fprintf(stderr, "Unknown message type: %u\n", msg.type);
     }

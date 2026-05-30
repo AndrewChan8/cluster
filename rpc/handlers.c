@@ -504,3 +504,38 @@ int handle_inject_latency(int client_fd,
 
   return 0;
 }
+
+int handle_inject_drop(int client_fd,
+                       const struct message *msg) {
+  char buf[32];
+  uint32_t drop_percent;
+
+  if (msg->length == 0 || msg->length >= sizeof(buf)) {
+    const char *err = "invalid drop percentage";
+
+    send_message(client_fd,
+                 MSG_ERROR,
+                 msg->request_id,
+                 err,
+                 (uint32_t) strlen(err));
+
+    return 0;
+  }
+
+  memcpy(buf, msg->payload, msg->length);
+  buf[msg->length] = '\0';
+
+  drop_percent = (uint32_t) strtoul(buf, NULL, 10);
+
+  failure_injector_set_drop(drop_percent);
+
+  if (send_message(client_fd,
+                   MSG_INJECT_DROP_RESPONSE,
+                   msg->request_id,
+                   NULL,
+                   0) < 0) {
+    perror("send_message");
+  }
+
+  return 0;
+}

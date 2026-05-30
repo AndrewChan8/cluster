@@ -39,7 +39,10 @@ static int send_to_follower(const char *host,
     return -1;
   }
 
-  failure_inject_before_send(host, msg_type);
+  if (failure_inject_before_send(host, msg_type) < 0) {
+    close(sockfd);
+    return -1;
+  }
 
   if (send_message(sockfd, msg_type, request_id, payload, payload_length) < 0) {
     perror("send_message");
