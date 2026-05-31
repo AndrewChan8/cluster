@@ -175,6 +175,17 @@ int handle_append(int client_fd,
     }
   }
 
+  if (ctx->adaptive_enabled &&
+      ack_count == follower_count) {
+    if (ctx->mode == CONSISTENCY_STRONG) {
+      ctx->mode = CONSISTENCY_QUORUM;
+      printf("ADAPTIVE: full follower acknowledgments; switching STRONG -> QUORUM\n");
+    } else if (ctx->mode == CONSISTENCY_QUORUM) {
+      ctx->mode = CONSISTENCY_EVENTUAL;
+      printf("ADAPTIVE: full follower acknowledgments; switching QUORUM -> EVENTUAL\n");
+    }
+  }
+
   printf("Mode=%d follower_acks=%d/%d\n",
          ctx->mode,
          ack_count,
