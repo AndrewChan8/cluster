@@ -142,8 +142,9 @@ static void *election_timeout_thread_main(void *arg) {
     elapsed = now - ctx->last_heartbeat_ms;
 
     should_become_candidate =
-      (ctx->role == ROLE_FOLLOWER &&
-       elapsed > (uint64_t) timeout_ms);
+      ((ctx->role == ROLE_FOLLOWER ||
+        ctx->role == ROLE_CANDIDATE) &&
+      elapsed > (uint64_t) timeout_ms);
 
     if (should_become_candidate) {
       char candidate_id[256];
@@ -191,18 +192,14 @@ static void *election_timeout_thread_main(void *arg) {
       if (ctx->role == ROLE_CANDIDATE &&
           ctx->current_term == term &&
           votes >= 2) {
-
         ctx->role = ROLE_LEADER;
-
-        snprintf(ctx->current_leader,
-                 sizeof(ctx->current_leader),
-                 "%s",
-                 ctx->node_id);
-
-        printf("Leader elected: node=%s term=%u votes=%d\n",
-               ctx->node_id,
-               ctx->current_term,
-               votes);
+        snprintf(ctx->current_leader, sizeof(ctx->current_leader), "%s", ctx->node_id);
+        printf("Leader elected: node=%s term=%u votes=%d\n", ctx->node_id, ctx->current_term, votes);
+      } else if (ctx->role == ROLE_CANDIDATE &&
+                ctx->current_term == term) {
+        ctx->last_heartbeat_ms = now_ms();
+        printf("Election failed: node=%s term=%u votes=%d; retrying later\n",
+              ctx->node_id, term, votes);
       }
 
       timeout_ms = 6000 + (rand() % 3000);
