@@ -24,6 +24,12 @@
 #include <string.h>
 #include <stdlib.h>
 
+#define MAX_CONFLICT_KEYS 32
+#define MAX_CONFLICT_KEY_SIZE 64
+
+static char recent_write_keys[MAX_CONFLICT_KEYS][MAX_CONFLICT_KEY_SIZE];
+static int recent_write_count = 0;
+
 static const char *CLUSTER_NODES[] = {
   "node1",
   "node2",
@@ -32,12 +38,48 @@ static const char *CLUSTER_NODES[] = {
 
 static const int CLUSTER_NODE_COUNT = 3;
 
+static int detect_conflicting_write(const char *tx) {
+  char key[MAX_CONFLICT_KEY_SIZE];
+  const char *colon;
+  size_t key_len;
+
+  colon = strchr(tx, ':');
+  if (colon == NULL) {
+    return 0;
+  }
+
+  key_len = (size_t)(colon - tx);
+  if (key_len == 0 || key_len >= sizeof(key)) {
+    return 0;
+  }
+
+  memcpy(key, tx, key_len);
+  key[key_len] = '\0';
+
+  for (int i = 0; i < recent_write_count; i++) {
+    if (strcmp(recent_write_keys[i], key) == 0) {
+      return 1;
+    }
+  }
+
+  if (recent_write_count < MAX_CONFLICT_KEYS) {
+    snprintf(recent_write_keys[recent_write_count],
+             sizeof(recent_write_keys[recent_write_count]),
+             "%s",
+             key);
+    recent_write_count++;
+  }
+
+  return 0;
+}
+
 int handle_append(int client_fd,
                   const struct message *msg,
                   server_context_t *ctx) {
   char tx[MAX_TX_SIZE + 1];
   int ack_count = 0;
   int follower_count = CLUSTER_NODE_COUNT - 1;
+  int conflict_detected = 0;
 
   if (ctx->role != ROLE_LEADER) {
     const char *err = "not leader";
@@ -63,6 +105,22 @@ int handle_append(int client_fd,
   tx[msg->length] = '\0';
 
   printf("APPEND tx=\"%s\"\n", tx);
+
+  if (detect_conflicting_write(tx)) {
+    conflict_detected = 1;
+    printf("CONFLICT DETECTED: tx=\"%s\"\n", tx);
+
+    if (ctx->adaptive_enabled &&
+        ctx->mode == CONSISTENCY_EVENTUAL) {
+      ctx->mode = CONSISTENCY_QUORUM;
+      printf("ADAPTIVE: conflict detected; switching EVENTUAL -> QUORUM\n");
+    }
+    else if (ctx->adaptive_enabled &&
+            ctx->mode == CONSISTENCY_QUORUM) {
+      ctx->mode = CONSISTENCY_STRONG;
+      printf("ADAPTIVE: conflict detected; switching QUORUM -> STRONG\n");
+    }
+  }
 
   if (ctx->mode == CONSISTENCY_STRONG) {
 
@@ -176,6 +234,7 @@ int handle_append(int client_fd,
   }
 
   if (ctx->adaptive_enabled &&
+      !conflict_detected &&
       ack_count == follower_count) {
     if (ctx->mode == CONSISTENCY_STRONG) {
       ctx->mode = CONSISTENCY_QUORUM;
