@@ -49,8 +49,8 @@ export default function App() {
     <div className="min-h-screen bg-slate-950 text-slate-100 p-8">
       <div className="mb-8 flex justify-between items-start">
         <div>
-          <p className="text-sm text-cyan-400 font-medium">CS630 Distributed Systems</p>
-          <h1 className="text-4xl font-bold">Adaptive Replicated Ledger</h1>
+          <p className="text-sm text-cyan-400 font-medium">Distributed Systems</p>
+          <h1 className="text-4xl font-bold">Adaptive Fault Tolerant Replicated Ledger</h1>
           <p className="text-slate-400 mt-2">
             Live dashboard for leader election, replication, failures, and adaptive consistency.
           </p>
