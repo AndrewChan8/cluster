@@ -19,6 +19,7 @@ typedef enum {
 typedef struct {
   char node_id[256];
   char port[32];
+  int adaptive_enabled;
 
   server_role_t role;
   uint32_t current_term;

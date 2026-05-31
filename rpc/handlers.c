@@ -588,3 +588,67 @@ int handle_inject_heal(int client_fd,
 
   return 0;
 }
+
+int handle_set_adaptive(int client_fd,
+                        const struct message *msg,
+                        server_context_t *ctx) {
+  char mode[16];
+
+  if (ctx->role != ROLE_LEADER) {
+    const char *err = "not leader";
+
+    send_message(client_fd,
+                 MSG_ERROR,
+                 msg->request_id,
+                 err,
+                 (uint32_t) strlen(err));
+
+    return 0;
+  }
+
+  if (msg->length == 0 || msg->length >= sizeof(mode)) {
+    const char *err = "invalid adaptive mode";
+
+    send_message(client_fd,
+                 MSG_ERROR,
+                 msg->request_id,
+                 err,
+                 (uint32_t) strlen(err));
+
+    return 0;
+  }
+
+  memcpy(mode, msg->payload, msg->length);
+  mode[msg->length] = '\0';
+
+  if (strcmp(mode, "on") == 0) {
+    ctx->adaptive_enabled = 1;
+    ctx->mode = CONSISTENCY_EVENTUAL;
+    printf("Adaptive consistency enabled; starting in EVENTUAL mode\n");
+
+  } else if (strcmp(mode, "off") == 0) {
+    ctx->adaptive_enabled = 0;
+    printf("Adaptive consistency disabled\n");
+
+  } else {
+    const char *err = "adaptive must be on or off";
+
+    send_message(client_fd,
+                 MSG_ERROR,
+                 msg->request_id,
+                 err,
+                 (uint32_t) strlen(err));
+
+    return 0;
+  }
+
+  if (send_message(client_fd,
+                   MSG_SET_ADAPTIVE_RESPONSE,
+                   msg->request_id,
+                   NULL,
+                   0) < 0) {
+    perror("send_message");
+  }
+
+  return 0;
+}

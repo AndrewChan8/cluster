@@ -55,6 +55,7 @@ int main(int argc, char *argv[]) {
           argv[1]);
           
   ctx.current_term = 1;
+  ctx.adaptive_enabled = 0;
   ctx.last_heartbeat_ms = 0;
   ctx.mode = CONSISTENCY_STRONG;
 
@@ -182,6 +183,9 @@ int main(int argc, char *argv[]) {
 
     } else if (msg.type == MSG_INJECT_HEAL) {
       handle_inject_heal(client_fd, &msg);
+      
+    } else if (msg.type == MSG_SET_ADAPTIVE) {
+      handle_set_adaptive(client_fd, &msg, &ctx);
       
     } else {
       fprintf(stderr, "Unknown message type: %u\n", msg.type);
