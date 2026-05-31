@@ -147,8 +147,20 @@ int handle_append(int client_fd,
       }
     }
 
+    if (ctx->adaptive_enabled &&
+        ctx->mode == CONSISTENCY_EVENTUAL &&
+        ack_count == 0) {
+      ctx->mode = CONSISTENCY_QUORUM;
+      printf("ADAPTIVE: no follower acknowledgments; switching EVENTUAL -> QUORUM\n");
+    }
+
     if (ctx->mode == CONSISTENCY_QUORUM &&
         ack_count < (follower_count / 2)) {
+
+      if (ctx->adaptive_enabled) {
+        ctx->mode = CONSISTENCY_STRONG;
+        printf("ADAPTIVE: quorum failure; switching QUORUM -> STRONG\n");
+      }
 
       const char *err =
         "quorum mode requires majority replication";
