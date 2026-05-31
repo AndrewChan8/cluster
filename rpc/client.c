@@ -87,6 +87,11 @@ static int handle_response(struct message *msg,
     return 0;
   }
 
+  if (msg->type == MSG_DASHBOARD_RESPONSE) {
+    printf("%.*s\n", (int) msg->length, msg->payload);
+    return 0;
+  }
+
   fprintf(stderr, "%s: unexpected response type %u\n", op_name, msg->type);
   return -1;
 }
@@ -120,8 +125,9 @@ int main(int argc, char *argv[]) {
         "  %s <host> <port> drop <percent>\n"
         "  %s <host> <port> partition <peer>\n"
         "  %s <host> <port> heal\n"
-        "  %s <host> <port> adaptive <on|off>\n",
-        argv[0], argv[0], argv[0], argv[0], argv[0], argv[0], argv[0], argv[0], argv[0], argv[0], argv[0], argv[0], argv[0]);
+        "  %s <host> <port> adaptive <on|off>\n"
+        "  %s <host> <port> dashboard\n",
+        argv[0], argv[0], argv[0], argv[0], argv[0], argv[0], argv[0], argv[0], argv[0], argv[0], argv[0], argv[0], argv[0], argv[0]);
     return EXIT_FAILURE;
   }
 
@@ -269,6 +275,16 @@ int main(int argc, char *argv[]) {
     payload = tx;
     payload_length = (uint32_t) strlen(tx);
     
+  } else if (strcmp(op, "dashboard") == 0) {
+    if (argc != 4) {
+      fprintf(stderr, "Usage: %s <host> <port> dashboard\n", argv[0]);
+      return EXIT_FAILURE;
+    }
+
+    msg_type = MSG_DASHBOARD;
+    payload = NULL;
+    payload_length = 0;
+
   } else {
     fprintf(stderr, "Unknown operation: %s\n", op);
     return EXIT_FAILURE;

@@ -23,6 +23,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
+#include <pthread.h>
 
 #define MAX_CONFLICT_KEYS 32
 #define MAX_CONFLICT_KEY_SIZE 64
@@ -729,6 +730,77 @@ int handle_set_adaptive(int client_fd,
                    msg->request_id,
                    NULL,
                    0) < 0) {
+    perror("send_message");
+  }
+
+  return 0;
+}
+
+static const char *role_to_string(server_role_t role){
+  switch (role) {
+    case ROLE_LEADER:
+      return "LEADER";
+    case ROLE_CANDIDATE:
+      return "CANDIDATE";
+    case ROLE_FOLLOWER:
+      return "FOLLOWER";
+    default:
+      return "UNKNOWN";
+  }
+}
+
+static const char *mode_to_string(consistency_mode_t mode) {
+  switch (mode) {
+    case CONSISTENCY_STRONG:
+      return "STRONG";
+    case CONSISTENCY_QUORUM:
+      return "QUORUM";
+    case CONSISTENCY_EVENTUAL:
+      return "EVENTUAL";
+    default:
+      return "UNKNOWN";
+  }
+}
+
+int handle_dashboard(int client_fd,
+                     const struct message *msg,
+                     server_context_t *ctx) {
+  char buf[1024];
+  char leader[256];
+  int n;
+
+  pthread_mutex_lock(&ctx->lock);
+
+  snprintf(leader,
+           sizeof(leader),
+           "%s",
+           ctx->current_leader[0] != '\0' ? ctx->current_leader : "UNKNOWN");
+
+  n = snprintf(buf,
+               sizeof(buf),
+               "node=%s role=%s leader=%s term=%u mode=%s adaptive=%d size=%u last_hash=%s",
+               ctx->node_id,
+               role_to_string(ctx->role),
+               leader,
+               ctx->current_term,
+               mode_to_string(ctx->mode),
+               ctx->adaptive_enabled,
+               ledger_size(),
+               ledger_last_hash());
+
+  pthread_mutex_unlock(&ctx->lock);
+
+  if (n < 0 || (uint32_t) n >= sizeof(buf)) {
+    const char *err = "failed to build dashboard status";
+    send_message(client_fd, MSG_ERROR, msg->request_id, err, (uint32_t) strlen(err));
+    return 0;
+  }
+
+  if (send_message(client_fd,
+                   MSG_DASHBOARD_RESPONSE,
+                   msg->request_id,
+                   buf,
+                   (uint32_t) n) < 0) {
     perror("send_message");
   }
 

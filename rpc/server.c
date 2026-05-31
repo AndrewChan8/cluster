@@ -115,7 +115,8 @@ int main(int argc, char *argv[]) {
     }
 
     if (msg.type != MSG_HEARTBEAT &&
-        msg.type != MSG_STATUS) {
+        msg.type != MSG_STATUS &&
+        msg.type != MSG_DASHBOARD) {
       printf("Received message: type=%u request_id=%u length=%u\n",
             msg.type,
             msg.request_id,
@@ -187,6 +188,9 @@ int main(int argc, char *argv[]) {
     } else if (msg.type == MSG_SET_ADAPTIVE) {
       handle_set_adaptive(client_fd, &msg, &ctx);
       
+    } else if (msg.type == MSG_DASHBOARD) {
+      handle_dashboard(client_fd, &msg, &ctx);
+
     } else {
       fprintf(stderr, "Unknown message type: %u\n", msg.type);
     }

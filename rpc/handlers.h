@@ -44,4 +44,6 @@ int handle_inject_heal(int client_fd, const struct message *msg);
 
 int handle_set_adaptive(int client_fd, const struct message *msg, server_context_t *ctx);
 
+int handle_dashboard(int client_fd, const struct message *msg, server_context_t *ctx);
+
 #endif
