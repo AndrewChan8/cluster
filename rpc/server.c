@@ -115,8 +115,9 @@ int main(int argc, char *argv[]) {
     }
 
     if (msg.type != MSG_HEARTBEAT &&
-        msg.type != MSG_STATUS &&
-        msg.type != MSG_DASHBOARD) {
+      msg.type != MSG_STATUS &&
+      msg.type != MSG_DASHBOARD &&
+      msg.type != MSG_GET_LOG) {
       printf("Received message: type=%u request_id=%u length=%u\n",
             msg.type,
             msg.request_id,
